@@ -5,15 +5,13 @@ authlib Starlette integration, which keeps the flow explicit and easy to trace.
 Each provider has a small, dedicated helper that knows its endpoints.
 """
 
-from typing import Annotated, Any
+from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import RedirectResponse
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import get_db, get_redis
+from api.deps import RedisDep, SessionDep
 from core.config import settings
 from schemas.auth import TokenResponse
 from services.auth import create_user_tokens, get_or_create_oauth_user
@@ -107,8 +105,8 @@ async def oauth_login(provider: str) -> RedirectResponse:
 async def oauth_callback(
     provider: str,
     code: str,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[Redis, Depends(get_redis)],
+    db: SessionDep,
+    redis: RedisDep,
 ) -> TokenResponse:
     """Handle the provider callback, exchange code for token, return app tokens."""
     import httpx

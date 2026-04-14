@@ -1,3 +1,5 @@
+"""FastAPI dependency injection — database sessions, Redis, and auth."""
+
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
@@ -18,7 +20,15 @@ logger = structlog.get_logger(__name__)
 _bearer_scheme = HTTPBearer()
 
 # ---------------------------------------------------------------------------
-# Redis dependency
+# Database
+# ---------------------------------------------------------------------------
+
+get_db = get_session
+
+SessionDep = Annotated[AsyncSession, Depends(get_db)]
+
+# ---------------------------------------------------------------------------
+# Redis
 # ---------------------------------------------------------------------------
 
 _redis_client: Redis | None = None
@@ -37,21 +47,16 @@ async def get_redis() -> AsyncGenerator[Redis, None]:
     yield _get_redis_client()
 
 
-# ---------------------------------------------------------------------------
-# Database dependency (re-exported from core for convenience)
-# ---------------------------------------------------------------------------
-
-get_db = get_session
-
+RedisDep = Annotated[Redis, Depends(get_redis)]
 
 # ---------------------------------------------------------------------------
-# Auth dependencies
+# Auth
 # ---------------------------------------------------------------------------
 
 
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(_bearer_scheme)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: SessionDep,
 ) -> User:
     """Validate the Bearer token and return the corresponding User.
 
@@ -91,3 +96,11 @@ async def get_current_active_user(
             detail="Account is inactive",
         )
     return user
+
+
+# ---------------------------------------------------------------------------
+# Named aliases — import these in route handlers instead of inline Annotated
+# ---------------------------------------------------------------------------
+
+CurrentUserDep = Annotated[User, Depends(get_current_user)]
+CurrentActiveUserDep = Annotated[User, Depends(get_current_active_user)]

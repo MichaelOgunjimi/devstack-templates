@@ -1,15 +1,12 @@
 from datetime import datetime, timezone
-from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from redis.asyncio import Redis
+from fastapi import APIRouter, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from api.deps import get_current_active_user, get_db, get_redis
+from api.deps import CurrentActiveUserDep, RedisDep, SessionDep
 from core.security import create_access_token, decode_token, hash_password
 from models.token import RefreshToken
 from models.user import User
@@ -29,8 +26,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(
     request: Request,
     body: RegisterRequest,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[Redis, Depends(get_redis)],
+    db: SessionDep,
+    redis: RedisDep,
 ) -> TokenResponse:
     """Create a new user account and return tokens."""
     result = await db.exec(select(User).where(User.email == body.email))
@@ -58,8 +55,8 @@ async def register(
 async def login(
     request: Request,
     body: LoginRequest,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[Redis, Depends(get_redis)],
+    db: SessionDep,
+    redis: RedisDep,
 ) -> TokenResponse:
     """Authenticate with email + password and return tokens."""
     user = await authenticate_user(db, body.email, body.password)
@@ -77,8 +74,8 @@ async def login(
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
     body: RefreshRequest,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[Redis, Depends(get_redis)],
+    db: SessionDep,
+    redis: RedisDep,
 ) -> TokenResponse:
     """Exchange a valid refresh token for a new access token.
 
@@ -132,8 +129,8 @@ async def refresh(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     body: RefreshRequest,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[Redis, Depends(get_redis)],
+    db: SessionDep,
+    redis: RedisDep,
 ) -> None:
     """Revoke the supplied refresh token."""
     try:
@@ -148,7 +145,7 @@ async def logout(
 
 @router.get("/me", response_model=UserRead)
 async def get_me(
-    user: Annotated[User, Depends(get_current_active_user)],
+    user: CurrentActiveUserDep,
 ) -> User:
     return user
 
@@ -156,8 +153,8 @@ async def get_me(
 @router.put("/me", response_model=UserRead)
 async def update_me(
     body: UserUpdate,
-    user: Annotated[User, Depends(get_current_active_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentActiveUserDep,
+    db: SessionDep,
 ) -> User:
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
