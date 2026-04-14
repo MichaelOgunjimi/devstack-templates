@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr
 
@@ -8,7 +7,7 @@ from pydantic import BaseModel, EmailStr
 class UserRead(BaseModel):
     id: uuid.UUID
     email: str
-    full_name: Optional[str]
+    full_name: str | None
     is_active: bool
     is_verified: bool
     created_at: datetime
@@ -17,5 +16,5 @@ class UserRead(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    full_name: str | None = None
+    email: EmailStr | None = None

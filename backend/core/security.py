@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timezone
 
 import structlog
 from fastapi import HTTPException, status
@@ -7,6 +6,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from core.config import settings
+from utils.datetime import utc_now
 
 logger = structlog.get_logger(__name__)
 
@@ -23,7 +23,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(data: dict) -> str:
     """Create a signed JWT access token with an expiry embedded in the payload."""
-    expire = datetime.now(timezone.utc) + settings.access_token_expire
+    expire = utc_now() + settings.access_token_expire
     payload = {**data, "exp": expire, "type": "access"}
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
@@ -35,7 +35,7 @@ def create_refresh_token(data: dict) -> tuple[str, str]:
     so the token can be revoked without decoding it on every request.
     """
     jti = str(uuid.uuid4())
-    expire = datetime.now(timezone.utc) + settings.refresh_token_expire
+    expire = utc_now() + settings.refresh_token_expire
     payload = {**data, "exp": expire, "jti": jti, "type": "refresh"}
     token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return token, jti

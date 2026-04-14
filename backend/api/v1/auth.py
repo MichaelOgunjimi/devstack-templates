@@ -1,10 +1,9 @@
-from datetime import datetime, timezone
-
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlmodel import select
+from sqlalchemy import select
+from sqlmodel import col
 
 from api.deps import CurrentActiveUserDep, RedisDep, SessionDep
 from core.security import create_access_token, decode_token, hash_password
@@ -13,6 +12,7 @@ from models.user import User
 from schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
 from schemas.user import UserRead, UserUpdate
 from services.auth import authenticate_user, create_user_tokens, revoke_refresh_token
+from utils.datetime import utc_now
 
 logger = structlog.get_logger(__name__)
 
@@ -30,8 +30,8 @@ async def register(
     redis: RedisDep,
 ) -> TokenResponse:
     """Create a new user account and return tokens."""
-    result = await db.exec(select(User).where(User.email == body.email))
-    if result.first():
+    result = await db.execute(select(User).where(col(User.email) == body.email))
+    if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists",
@@ -85,7 +85,10 @@ async def refresh(
 
     jti: str | None = payload.get("jti")
     if not jti:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
 
     token_type: str | None = payload.get("type")
     if token_type != "refresh":
@@ -98,15 +101,15 @@ async def refresh(
 
     if not user_id:
         # Fallback: check DB and backfill Redis if still valid.
-        result = await db.exec(select(RefreshToken).where(RefreshToken.jti == jti))
-        db_token = result.first()
+        result = await db.execute(select(RefreshToken).where(col(RefreshToken.jti) == jti))
+        db_token = result.scalar_one_or_none()
 
         if not db_token or db_token.revoked:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token has been revoked",
             )
-        if db_token.expires_at < datetime.now(timezone.utc):
+        if db_token.expires_at < utc_now():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token has expired",
@@ -114,7 +117,7 @@ async def refresh(
 
         user_id = str(db_token.user_id)
         # Backfill Redis for subsequent requests.
-        remaining_ttl = int((db_token.expires_at - datetime.now(timezone.utc)).total_seconds())
+        remaining_ttl = int((db_token.expires_at - utc_now()).total_seconds())
         if remaining_ttl > 0:
             await redis.setex(redis_key, remaining_ttl, user_id)
 
@@ -160,7 +163,7 @@ async def update_me(
     for field, value in update_data.items():
         setattr(user, field, value)
 
-    user.updated_at = datetime.now(timezone.utc)
+    user.updated_at = utc_now()
 
     db.add(user)
     await db.commit()

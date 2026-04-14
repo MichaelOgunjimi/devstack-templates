@@ -1,39 +1,26 @@
-"""Notification Service integration.
+"""Notification Service API client.
 
-Sends notifications via your Notification Service at NOTIFY_URL.
+Wraps the notification-system REST API at:
+  {NOTIFY_URL}/api/v1
 
-The Notification Service API:
-  POST {NOTIFY_URL}/api/v1/events
-  Header: X-API-Key: {NOTIFY_API_KEY}
-
-  Body:
-  {
-    "event_type": "user.welcome",
-    "recipients": [
-      {
-        "user_id": "optional-user-id",
-        "channels": ["email"],
-        "email": "user@example.com",
-        "phone": "+15551234567",    # only if sms channel
-        "webhook_url": "https://..."  # only if webhook channel
-      }
-    ],
-    "payload": { "name": "John", ... },
-    "priority": "medium"           # low | medium | high | critical
-  }
-
-Usage:
-  from services.integrations.notify import send
-
-  await send(
-      event_type="user.welcome",
-      recipient_email="user@example.com",
-      payload={"name": user.full_name},
-  )
+Example:
+    await send(
+        event_type="user.welcome",
+        payload={"name": "John"},
+        recipient_email="john@example.com",
+    )
 """
 
-import structlog
+import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import datetime
+from enum import StrEnum
+from typing import Any
+
 import httpx
+import structlog
+from pydantic import BaseModel, Field
 
 from core.config import settings
 from core.exceptions import NotificationServiceError, NotificationServiceNotConfiguredError
@@ -41,88 +28,325 @@ from core.exceptions import NotificationServiceError, NotificationServiceNotConf
 logger = structlog.get_logger(__name__)
 
 
-async def send(
-    event_type: str,
-    payload: dict,
-    recipient_email: str | None = None,
-    recipient_phone: str | None = None,
-    recipient_webhook_url: str | None = None,
-    recipient_user_id: str | None = None,
-    channels: list[str] | None = None,
-    priority: str = "medium",
-) -> None:
-    """Send a notification via the Notification Service.
+class NotifyPriority(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
-    Args:
-        event_type:            Matches a template in the Notification Service
-                               e.g. "user.welcome", "password.reset"
-        payload:               Template variables e.g. {"name": "John"}
-        recipient_email:       Required if "email" is in channels
-        recipient_phone:       Required if "sms" is in channels (E.164 format)
-        recipient_webhook_url: Required if "webhook" is in channels
-        recipient_user_id:     Optional — links notification to a user record
-        channels:              Defaults to ["email"]
-        priority:              low | medium | high | critical
 
-    Raises:
-        NotificationServiceNotConfiguredError: NOTIFY_URL or NOTIFY_API_KEY not set
-        NotificationServiceError:              HTTP call to Notification Service failed
-    """
+class NotifyChannel(StrEnum):
+    EMAIL = "email"
+    SMS = "sms"
+    WEBHOOK = "webhook"
+
+
+class NotifyEventStatus(StrEnum):
+    ACCEPTED = "accepted"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    PARTIALLY_FAILED = "partially_failed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class NotifyRecipient(BaseModel):
+    user_id: str | None = None
+    channels: list[NotifyChannel]
+    email: str | None = None
+    phone: str | None = None
+    webhook_url: str | None = None
+
+
+class NotifyEventCreate(BaseModel):
+    event_type: str
+    recipients: list[NotifyRecipient]
+    payload: dict[str, Any]
+    priority: NotifyPriority = NotifyPriority.MEDIUM
+    template_id: uuid.UUID | None = None
+    idempotency_key: str | None = None
+
+
+class NotifyEventResponse(BaseModel):
+    id: uuid.UUID
+    event_type: str
+    priority: NotifyPriority
+    status: NotifyEventStatus
+    notification_ids: list[uuid.UUID]
+    created_at: datetime
+
+
+class NotifyTemplateCreate(BaseModel):
+    name: str
+    channel: NotifyChannel
+    subject: str | None = None
+    body: str
+    variables: list[str] = Field(default_factory=list)
+
+
+class NotifyTemplateUpdate(BaseModel):
+    name: str | None = None
+    channel: NotifyChannel | None = None
+    subject: str | None = None
+    body: str | None = None
+    variables: list[str] | None = None
+    is_active: bool | None = None
+
+
+class NotifyTemplateResponse(BaseModel):
+    id: uuid.UUID
+    api_key_id: uuid.UUID
+    name: str
+    channel: NotifyChannel
+    subject: str | None = None
+    body: str
+    variables: list[str]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+def _base_url() -> str:
     if not settings.NOTIFY_URL or not settings.NOTIFY_API_KEY:
         raise NotificationServiceNotConfiguredError(
-            "NOTIFY_URL and NOTIFY_API_KEY must be set to send notifications"
+            "NOTIFY_URL and NOTIFY_API_KEY must be set to use notifications"
         )
+    return f"{settings.NOTIFY_URL.rstrip('/')}/api/v1"
 
-    if channels is None:
-        channels = ["email"]
 
-    recipient: dict = {"channels": channels}
-    if recipient_user_id:
-        recipient["user_id"] = recipient_user_id
-    if recipient_email:
-        recipient["email"] = recipient_email
-    if recipient_phone:
-        recipient["phone"] = recipient_phone
-    if recipient_webhook_url:
-        recipient["webhook_url"] = recipient_webhook_url
+def _headers() -> dict[str, str]:
+    return {"X-API-Key": settings.NOTIFY_API_KEY}
 
-    body = {
-        "event_type": event_type,
-        "recipients": [recipient],
-        "payload": payload,
-        "priority": priority,
-    }
 
-    logger.info(
-        "notify.send.attempt",
-        event_type=event_type,
-        channels=channels,
-        recipient_email=recipient_email,
+@asynccontextmanager
+async def _client() -> AsyncIterator[httpx.AsyncClient]:
+    """Create an API client configured for the Notification Service."""
+    async with httpx.AsyncClient(
+        base_url=_base_url(),
+        headers=_headers(),
+        timeout=10.0,
+    ) as client:
+        yield client
+
+
+def _raise_service_error(exc: httpx.HTTPStatusError, operation: str) -> None:
+    status_code = exc.response.status_code
+    response_body = exc.response.text
+    logger.error(
+        "notify.http_error",
+        operation=operation,
+        status_code=status_code,
+        response_body=response_body,
     )
+    raise NotificationServiceError(
+        message=f"{operation} failed with {status_code}: {response_body}",
+        status_code=status_code,
+    ) from exc
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
+
+def _raise_connection_error(exc: httpx.RequestError, operation: str) -> None:
+    logger.error("notify.connection_error", operation=operation, error=str(exc))
+    raise NotificationServiceError(
+        message=f"{operation} failed: could not reach Notification Service",
+        status_code=503,
+    ) from exc
+
+
+async def send(
+    event_type: str,
+    payload: dict[str, Any],
+    recipient_email: str,
+    *,
+    recipient_user_id: str | None = None,
+    priority: NotifyPriority = NotifyPriority.MEDIUM,
+    template_id: uuid.UUID | None = None,
+    idempotency_key: str | None = None,
+) -> NotifyEventResponse:
+    """Send a single event to one email recipient."""
+    event = NotifyEventCreate(
+        event_type=event_type,
+        recipients=[
+            NotifyRecipient(
+                user_id=recipient_user_id,
+                channels=[NotifyChannel.EMAIL],
+                email=recipient_email,
+            )
+        ],
+        payload=payload,
+        priority=priority,
+        template_id=template_id,
+        idempotency_key=idempotency_key,
+    )
+    return await _send_event(event)
+
+
+async def _send_event(data: NotifyEventCreate) -> NotifyEventResponse:
+    """Send a single event payload to /events."""
+    logger.info(
+        "notify.send_event.attempt",
+        event_type=data.event_type,
+        priority=data.priority.value,
+    )
+    try:
+        async with _client() as client:
             response = await client.post(
-                f"{settings.NOTIFY_URL.rstrip('/')}/api/v1/events",
-                json=body,
-                headers={"X-API-Key": settings.NOTIFY_API_KEY},
+                "/events",
+                json=data.model_dump(mode="json", exclude_none=True),
             )
             response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            logger.error(
-                "notify.send.http_error",
-                status_code=exc.response.status_code,
-                body=exc.response.text,
-            )
-            raise NotificationServiceError(
-                message=f"Notification Service returned {exc.response.status_code}: {exc.response.text}",
-                status_code=exc.response.status_code,
-            ) from exc
-        except httpx.RequestError as exc:
-            logger.error("notify.send.request_error", error=str(exc))
-            raise NotificationServiceError(
-                message=f"Could not reach Notification Service: {exc}",
-                status_code=503,
-            ) from exc
+    except httpx.HTTPStatusError as exc:
+        _raise_service_error(exc, "send_event")
+    except httpx.RequestError as exc:
+        _raise_connection_error(exc, "send_event")
 
-    logger.info("notify.send.success", event_type=event_type)
+    event = NotifyEventResponse.model_validate(response.json())
+    logger.info("notify.send_event.success", event_id=str(event.id), status=event.status.value)
+    return event
+
+
+async def send_batch(events: list[NotifyEventCreate]) -> list[NotifyEventResponse]:
+    """Send multiple events to /events/batch."""
+    logger.info("notify.send_batch.attempt", event_count=len(events))
+    try:
+        async with _client() as client:
+            response = await client.post(
+                "/events/batch",
+                json=[event.model_dump(mode="json", exclude_none=True) for event in events],
+            )
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        _raise_service_error(exc, "send_batch")
+    except httpx.RequestError as exc:
+        _raise_connection_error(exc, "send_batch")
+
+    data = response.json()
+    items = data if isinstance(data, list) else data.get("items", [])
+    result = [NotifyEventResponse.model_validate(item) for item in items]
+    logger.info("notify.send_batch.success", event_count=len(result))
+    return result
+
+
+async def get_event(event_id: uuid.UUID) -> NotifyEventResponse | None:
+    """Fetch event status by ID."""
+    logger.info("notify.get_event.attempt", event_id=str(event_id))
+    try:
+        async with _client() as client:
+            response = await client.get(f"/events/{event_id}")
+            if response.status_code == 404:
+                logger.info("notify.get_event.not_found", event_id=str(event_id))
+                return None
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        _raise_service_error(exc, "get_event")
+    except httpx.RequestError as exc:
+        _raise_connection_error(exc, "get_event")
+
+    event = NotifyEventResponse.model_validate(response.json())
+    logger.info("notify.get_event.success", event_id=str(event.id), status=event.status.value)
+    return event
+
+
+async def list_templates(
+    *,
+    page: int = 1,
+    per_page: int = 20,
+    channel: NotifyChannel | None = None,
+) -> list[NotifyTemplateResponse]:
+    """List templates with optional pagination and channel filtering."""
+    params: dict[str, str | int] = {"page": page, "per_page": per_page}
+    if channel is not None:
+        params["channel"] = channel.value
+
+    logger.info("notify.list_templates.attempt", page=page, per_page=per_page, channel=channel)
+    try:
+        async with _client() as client:
+            response = await client.get("/templates", params=params)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        _raise_service_error(exc, "list_templates")
+    except httpx.RequestError as exc:
+        _raise_connection_error(exc, "list_templates")
+
+    data = response.json()
+    items = data if isinstance(data, list) else data.get("items", [])
+    templates = [NotifyTemplateResponse.model_validate(item) for item in items]
+    logger.info("notify.list_templates.success", template_count=len(templates))
+    return templates
+
+
+async def get_template(template_id: uuid.UUID) -> NotifyTemplateResponse | None:
+    """Fetch a single template by ID."""
+    logger.info("notify.get_template.attempt", template_id=str(template_id))
+    try:
+        async with _client() as client:
+            response = await client.get(f"/templates/{template_id}")
+            if response.status_code == 404:
+                logger.info("notify.get_template.not_found", template_id=str(template_id))
+                return None
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        _raise_service_error(exc, "get_template")
+    except httpx.RequestError as exc:
+        _raise_connection_error(exc, "get_template")
+
+    template = NotifyTemplateResponse.model_validate(response.json())
+    logger.info("notify.get_template.success", template_id=str(template.id))
+    return template
+
+
+async def create_template(data: NotifyTemplateCreate) -> NotifyTemplateResponse:
+    """Create a template."""
+    logger.info("notify.create_template.attempt", name=data.name, channel=data.channel.value)
+    try:
+        async with _client() as client:
+            response = await client.post(
+                "/templates",
+                json=data.model_dump(mode="json", exclude_none=True),
+            )
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        _raise_service_error(exc, "create_template")
+    except httpx.RequestError as exc:
+        _raise_connection_error(exc, "create_template")
+
+    template = NotifyTemplateResponse.model_validate(response.json())
+    logger.info("notify.create_template.success", template_id=str(template.id))
+    return template
+
+
+async def update_template(
+    template_id: uuid.UUID,
+    data: NotifyTemplateUpdate,
+) -> NotifyTemplateResponse:
+    """Update a template."""
+    logger.info("notify.update_template.attempt", template_id=str(template_id))
+    try:
+        async with _client() as client:
+            response = await client.put(
+                f"/templates/{template_id}",
+                json=data.model_dump(mode="json", exclude_none=True),
+            )
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        _raise_service_error(exc, "update_template")
+    except httpx.RequestError as exc:
+        _raise_connection_error(exc, "update_template")
+
+    template = NotifyTemplateResponse.model_validate(response.json())
+    logger.info("notify.update_template.success", template_id=str(template.id))
+    return template
+
+
+async def delete_template(template_id: uuid.UUID) -> None:
+    """Delete a template."""
+    logger.info("notify.delete_template.attempt", template_id=str(template_id))
+    try:
+        async with _client() as client:
+            response = await client.delete(f"/templates/{template_id}")
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        _raise_service_error(exc, "delete_template")
+    except httpx.RequestError as exc:
+        _raise_connection_error(exc, "delete_template")
+
+    logger.info("notify.delete_template.success", template_id=str(template_id))

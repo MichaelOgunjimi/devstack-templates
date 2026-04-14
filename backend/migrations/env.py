@@ -8,14 +8,13 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
 # Import all models so their metadata is registered before autogenerate runs.
-import models.user  # noqa: F401
 import models.token  # noqa: F401
-
+import models.user  # noqa: F401
 from core.config import settings
 
 # Alembic Config object — gives access to alembic.ini values.

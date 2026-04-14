@@ -2,7 +2,6 @@ import io
 
 import structlog
 from minio import Minio
-from minio.error import S3Error
 
 from core.config import settings
 from core.exceptions import StorageNotConfiguredError

@@ -7,8 +7,9 @@ import structlog
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col
 
 from core.config import settings
 from core.database import get_session
@@ -72,8 +73,8 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    result = await db.exec(select(User).where(User.id == user_id))
-    user = result.first()
+    result = await db.execute(select(User).where(col(User.id) == user_id))
+    user = result.scalar_one_or_none()
 
     if not user:
         logger.warning("deps.get_current_user.not_found", user_id=user_id)

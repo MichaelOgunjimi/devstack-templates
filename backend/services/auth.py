@@ -1,22 +1,15 @@
-import uuid
-from datetime import datetime, timezone
-from typing import Optional
-
 import structlog
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col
 
-from core.security import (
-    create_access_token,
-    create_refresh_token,
-    hash_password,
-    verify_password,
-)
 from core.config import settings
+from core.security import create_access_token, create_refresh_token, verify_password
 from models.token import RefreshToken
 from models.user import OAuthAccount, User
 from schemas.auth import TokenResponse
+from utils.datetime import utc_now
 
 logger = structlog.get_logger(__name__)
 
@@ -28,12 +21,11 @@ def _redis_key(jti: str) -> str:
     return f"{_REDIS_PREFIX}:{jti}"
 
 
-async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
     """Return the User if credentials are valid, else None."""
-    result = await db.exec(select(User).where(User.email == email))
-    user = result.first()
-
-    if not user or not user.hashed_password:
+    result = await db.execute(select(User).where(col(User.email) == email))
+    user = result.scalar_one_or_none()
+    if user is None:
         return None
     if not verify_password(password, user.hashed_password):
         return None
@@ -50,7 +42,7 @@ async def create_user_tokens(user: User, db: AsyncSession, redis: Redis) -> Toke
     access_token = create_access_token(token_data)
     refresh_token_str, jti = create_refresh_token(token_data)
 
-    expires_at = datetime.now(timezone.utc) + settings.refresh_token_expire
+    expires_at = utc_now() + settings.refresh_token_expire
 
     # Persist to DB first so we have the source of truth before Redis.
     db_token = RefreshToken(
@@ -79,8 +71,8 @@ async def revoke_refresh_token(jti: str, db: AsyncSession, redis: Redis) -> None
     await redis.delete(_redis_key(jti))
 
     # Mark revoked in DB for audit purposes.
-    result = await db.exec(select(RefreshToken).where(RefreshToken.jti == jti))
-    db_token = result.first()
+    result = await db.execute(select(RefreshToken).where(col(RefreshToken.jti) == jti))
+    db_token = result.scalar_one_or_none()
     if db_token:
         db_token.revoked = True
         db.add(db_token)
@@ -94,7 +86,7 @@ async def get_or_create_oauth_user(
     provider: str,
     provider_account_id: str,
     email: str,
-    full_name: Optional[str],
+    full_name: str | None,
     access_token: str,
 ) -> User:
     """Find or create a User via OAuth.
@@ -103,18 +95,25 @@ async def get_or_create_oauth_user(
     OAuthAccount to that user instead of creating a duplicate account.
     """
     # Check if this OAuth account is already linked.
-    result = await db.exec(
+    result = await db.execute(
         select(OAuthAccount).where(
-            OAuthAccount.provider == provider,
-            OAuthAccount.provider_account_id == provider_account_id,
+            col(OAuthAccount.provider) == provider,
+            col(OAuthAccount.provider_account_id) == provider_account_id,
         )
     )
-    oauth_account = result.first()
+    oauth_account = result.scalar_one_or_none()
 
     if oauth_account:
         # Known OAuth account — fetch the linked user.
-        user_result = await db.exec(select(User).where(User.id == oauth_account.user_id))
-        user = user_result.first()
+        user_result = await db.execute(select(User).where(col(User.id) == oauth_account.user_id))
+        user = user_result.scalar_one_or_none()
+        if user is None:
+            logger.error(
+                "auth.oauth.linked_user_missing",
+                provider=provider,
+                provider_account_id=provider_account_id,
+            )
+            raise ValueError("Linked OAuth user record not found")
         # Update access token in case it changed.
         oauth_account.access_token = access_token
         db.add(oauth_account)
@@ -123,8 +122,8 @@ async def get_or_create_oauth_user(
         return user
 
     # No existing OAuth account — check if email already belongs to a user.
-    result = await db.exec(select(User).where(User.email == email))
-    user = result.first()
+    result = await db.execute(select(User).where(col(User.email) == email))
+    user = result.scalar_one_or_none()
 
     if not user:
         # Brand-new user via OAuth.

@@ -4,11 +4,10 @@ Uses an in-memory SQLite engine to isolate tests from a real PostgreSQL
 database. Overrides DATABASE_URL and the FastAPI DB/Redis dependencies.
 """
 
-import pytest
-import pytest_asyncio
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock
 
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
@@ -63,10 +62,13 @@ def mock_redis() -> AsyncMock:
 
 
 @pytest_asyncio.fixture
-async def client(db_session: AsyncSession, mock_redis: AsyncMock) -> AsyncGenerator[AsyncClient, None]:
+async def client(
+    db_session: AsyncSession,
+    mock_redis: AsyncMock,
+) -> AsyncGenerator[AsyncClient, None]:
     """Return an httpx AsyncClient wired to the test DB and mock Redis."""
-    from main import app
     from api.deps import get_db, get_redis
+    from main import app
 
     async def override_get_db():
         yield db_session

@@ -5,6 +5,7 @@ Creates the FastAPI app, wires up middleware, routers, and lifespan events.
 
 import logging
 from contextlib import asynccontextmanager
+from typing import cast
 
 import structlog
 from fastapi import FastAPI, Request, status
@@ -13,6 +14,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.types import ExceptionHandler
 
 from core.config import settings
 from core.database import init_db
@@ -24,7 +26,6 @@ from core.database import init_db
 _processors_shared = [
     structlog.contextvars.merge_contextvars,
     structlog.stdlib.add_log_level,
-    structlog.stdlib.add_logger_name,
     structlog.processors.TimeStamper(fmt="iso"),
 ]
 
@@ -94,7 +95,10 @@ app = FastAPI(
 
 # Rate limiter state must be attached before adding the exception handler.
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(
+    RateLimitExceeded,
+    cast(ExceptionHandler, _rate_limit_exceeded_handler),
+)
 
 # CORS
 app.add_middleware(
@@ -109,11 +113,9 @@ app.add_middleware(
 # Routers
 # ---------------------------------------------------------------------------
 
-from api.routes import auth, health, oauth  # noqa: E402 — imports after app creation
+from api.v1.router import api_v1_router  # noqa: E402 — imports after app creation
 
-app.include_router(health.router)
-app.include_router(auth.router)
-app.include_router(oauth.router)
+app.include_router(api_v1_router, prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Global exception handler — catch-all so errors are always JSON

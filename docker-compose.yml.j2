@@ -5,26 +5,33 @@ services:
   backend:
     build: ./backend
     ports:
-      - "{{ ports.backend }}:8000"
+      - "{{ ports.backend }}:{{ ports.backend }}"
+    environment:
+      PORT: "{{ ports.backend }}"
     env_file: ./backend/.env
 {% if "postgres" in services or "redis" in services %}
     depends_on:
 {% if "postgres" in services %}
-      - postgres
+      postgres:
+        condition: service_healthy
 {% endif %}
 {% if "redis" in services %}
-      - redis
+      redis:
+        condition: service_started
 {% endif %}
 {% endif %}
     volumes:
       - ./backend:/app
+      - /app/.venv
     restart: unless-stopped
 
 {% if frontend == "nextjs" %}
   frontend:
     build: ./frontend
     ports:
-      - "{{ ports.frontend }}:3000"
+      - "{{ ports.frontend }}:{{ ports.frontend }}"
+    environment:
+      PORT: "{{ ports.frontend }}"
     env_file: ./frontend/.env.local
     volumes:
       - ./frontend:/app
@@ -35,7 +42,9 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "{{ ports.frontend }}:5173"
+      - "{{ ports.frontend }}:{{ ports.frontend }}"
+    environment:
+      PORT: "{{ ports.frontend }}"
     env_file: ./frontend/.env
     volumes:
       - ./frontend:/app
@@ -54,6 +63,11 @@ services:
       POSTGRES_DB: {{ project_name }}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devstack -d {{ project_name }}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
 {% endif %}
