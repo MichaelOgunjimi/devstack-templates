@@ -4,12 +4,13 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Create virtual environment and install dependencies
-COPY requirements.txt .
-RUN uv venv /app/.venv && \
-    uv pip install --python /app/.venv/bin/python -r requirements.txt
+# Copy dependency files first — changes here invalidate the install layer
+COPY pyproject.toml uv.lock ./
+
+# Install production deps into .venv; skip dev deps and the project itself
+RUN uv sync --frozen --no-dev --no-install-project
 
 # ── Runtime stage ────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
