@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# DevStack project script for {{ project_name }}
+# Run from the project root: ./devstack <command>
+
+set -euo pipefail
+
+PROJECT_NAME="{{ project_name }}"
+COMPOSE="docker compose"
+
+case "${1:-help}" in
+  up)
+    echo "Starting $PROJECT_NAME..."
+    $COMPOSE up -d
+    ;;
+  build)
+    echo "Rebuilding ${2:-all} services..."
+    if [ -n "${2:-}" ]; then
+      $COMPOSE build --no-cache "$2"
+    else
+      $COMPOSE build --no-cache
+    fi
+    $COMPOSE up -d
+    ;;
+  down)
+    echo "Stopping $PROJECT_NAME..."
+    $COMPOSE down
+    ;;
+  restart)
+    $COMPOSE down && $COMPOSE up -d
+    ;;
+  logs)
+    $COMPOSE logs -f "${2:-}"
+    ;;
+  exec)
+    shift
+    $COMPOSE exec "$@"
+    ;;
+  shell)
+    $COMPOSE exec backend bash
+    ;;
+  migrate)
+    $COMPOSE exec backend alembic upgrade head
+    ;;
+  status)
+    $COMPOSE ps
+    ;;
+  *)
+    echo "Usage: ./devstack {up|build [svc]|down|restart|logs [svc]|exec <svc> <cmd>|shell|migrate|status}"
+    exit 1
+    ;;
+esac

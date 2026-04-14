@@ -1,0 +1,129 @@
+name: {{ project_name }}
+
+services:
+
+  backend:
+    build: ./backend
+    ports:
+      - "{{ ports.backend }}:8000"
+    env_file: ./backend/.env
+{% if "postgres" in services or "redis" in services %}
+    depends_on:
+{% if "postgres" in services %}
+      - postgres
+{% endif %}
+{% if "redis" in services %}
+      - redis
+{% endif %}
+{% endif %}
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+{% if frontend == "nextjs" %}
+  frontend:
+    build: ./frontend
+    ports:
+      - "{{ ports.frontend }}:3000"
+    env_file: ./frontend/.env.local
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+{% elif frontend == "react" %}
+  frontend:
+    build: ./frontend
+    ports:
+      - "{{ ports.frontend }}:5173"
+    env_file: ./frontend/.env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+{% endif %}
+{% if "postgres" in services %}
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "{{ ports.postgres }}:5432"
+    environment:
+      POSTGRES_USER: devstack
+      POSTGRES_PASSWORD: devstack
+      POSTGRES_DB: {{ project_name }}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+{% endif %}
+{% if "redis" in services %}
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "{{ ports.redis }}:6379"
+    restart: unless-stopped
+
+{% endif %}
+{% if "minio" in services %}
+  minio:
+    image: minio/minio
+    profiles: [storage]
+    ports:
+      - "{{ ports.minio }}:9000"
+      - "{{ ports.minio_console }}:9001"
+    environment:
+      MINIO_ROOT_USER: devstack
+      MINIO_ROOT_PASSWORD: devstack123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+{% endif %}
+{% if "mailhog" in services %}
+  mailhog:
+    image: mailhog/mailhog
+    profiles: [dev]
+    ports:
+      - "{{ ports.mailhog }}:1025"
+      - "{{ ports.mailhog_ui }}:8025"
+    restart: unless-stopped
+
+{% endif %}
+{% if "elasticsearch" in optional %}
+  elasticsearch:
+    image: elasticsearch:8.13.0
+    profiles: [search]
+    ports:
+      - "{{ ports.elasticsearch }}:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+{% endif %}
+
+networks:
+  default:
+    name: {{ project_name }}_network
+
+{% set ns = namespace(has_volumes=false) %}
+{% if "postgres" in services %}{% set ns.has_volumes = true %}{% endif %}
+{% if "minio" in services %}{% set ns.has_volumes = true %}{% endif %}
+{% if "elasticsearch" in optional %}{% set ns.has_volumes = true %}{% endif %}
+{% if ns.has_volumes %}
+volumes:
+{% if "postgres" in services %}
+  postgres_data:
+{% endif %}
+{% if "minio" in services %}
+  minio_data:
+{% endif %}
+{% if "elasticsearch" in optional %}
+  elasticsearch_data:
+{% endif %}
+{% endif %}
