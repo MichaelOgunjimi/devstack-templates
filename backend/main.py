@@ -35,7 +35,7 @@ else:
     _processors = _processors_shared + [structlog.dev.ConsoleRenderer()]
 
 structlog.configure(
-    processors=_processors,
+    processors=_processors,  # type: ignore[arg-type]
     wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
     context_class=dict,
     logger_factory=structlog.PrintLoggerFactory(),

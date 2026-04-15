@@ -27,7 +27,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     user = result.scalar_one_or_none()
     if user is None:
         return None
-    if not verify_password(password, user.hashed_password):
+    if user.hashed_password is None or not verify_password(password, user.hashed_password):
         return None
     return user
 
@@ -122,8 +122,8 @@ async def get_or_create_oauth_user(
         return user
 
     # No existing OAuth account — check if email already belongs to a user.
-    result = await db.execute(select(User).where(col(User.email) == email))
-    user = result.scalar_one_or_none()
+    user_result = await db.execute(select(User).where(col(User.email) == email))
+    user = user_result.scalar_one_or_none()
 
     if not user:
         # Brand-new user via OAuth.

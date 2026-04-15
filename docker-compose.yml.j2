@@ -27,11 +27,15 @@ services:
 
 {% if frontend == "nextjs" %}
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: deps
+    command: npm run dev -- --port {{ ports.frontend }}
     ports:
       - "{{ ports.frontend }}:{{ ports.frontend }}"
     environment:
       PORT: "{{ ports.frontend }}"
+      NEXT_TELEMETRY_DISABLED: "1"
     env_file: ./frontend/.env.local
     volumes:
       - ./frontend:/app

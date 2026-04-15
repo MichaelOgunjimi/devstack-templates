@@ -4,13 +4,19 @@ Uses an in-memory SQLite engine to isolate tests from a real PostgreSQL
 database. Overrides DATABASE_URL and the FastAPI DB/Redis dependencies.
 """
 
-from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock
+# Must be set before any app imports — prevents asyncpg from being loaded
+# when core/database.py is imported at module level.
+import os
 
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+
+from collections.abc import AsyncGenerator  # noqa: E402
+from unittest.mock import AsyncMock  # noqa: E402
+
+import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
+from sqlmodel import SQLModel  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Engine — SQLite in-memory for fast, isolated tests
