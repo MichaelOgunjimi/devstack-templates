@@ -25,6 +25,11 @@ case "${1:-help}" in
     echo "Stopping $PROJECT_NAME..."
     $COMPOSE down
     ;;
+  rebuild)
+    echo "Tearing down and rebuilding $PROJECT_NAME from scratch..."
+    $COMPOSE down --rmi all
+    $COMPOSE up -d --build
+    ;;
   restart)
     $COMPOSE down && $COMPOSE up -d
     ;;
@@ -45,7 +50,7 @@ case "${1:-help}" in
     $COMPOSE ps
     ;;
   *)
-    echo "Usage: ./devstack {up|build [svc]|down|restart|logs [svc]|exec <svc> <cmd>|shell|migrate|status}"
+    echo "Usage: ./devstack {up|build [svc]|rebuild|down|restart|logs [svc]|exec <svc> <cmd>|shell|migrate|status}"
     exit 1
     ;;
 esac
