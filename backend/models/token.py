@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class RefreshToken(SQLModel, table=True):
-    __tablename__ = "refresh_tokens"
+    __tablename__ = "refresh_tokens"  # type: ignore[assignment]
     __table_args__ = ({"extend_existing": True},)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

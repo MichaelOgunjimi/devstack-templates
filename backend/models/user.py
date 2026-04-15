@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class User(SQLModel, table=True):
-    __tablename__ = "users"
+    __tablename__ = "users"  # type: ignore[assignment]
     __table_args__ = ({"extend_existing": True},)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
@@ -30,7 +30,7 @@ class User(SQLModel, table=True):
 
 
 class OAuthAccount(SQLModel, table=True):
-    __tablename__ = "oauth_accounts"
+    __tablename__ = "oauth_accounts"  # type: ignore[assignment]
     __table_args__ = ({"extend_existing": True},)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
