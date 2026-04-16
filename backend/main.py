@@ -41,6 +41,12 @@ structlog.configure(
     logger_factory=structlog.PrintLoggerFactory(),
 )
 
+# Route stdlib logging (uvicorn) through structlog
+logging.basicConfig(format="%(message)s", handlers=[logging.StreamHandler()])
+for _logger_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+    logging.getLogger(_logger_name).handlers.clear()
+    logging.getLogger(_logger_name).propagate = True
+
 logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
