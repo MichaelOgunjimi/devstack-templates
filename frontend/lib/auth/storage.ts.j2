@@ -1,0 +1,68 @@
+const DEFAULT_PREFIX = "{{ project_name }}_auth";
+
+/**
+ * Thin abstraction over localStorage for refresh token persistence.
+ * The access token is kept in memory only (on the AuthClient instance)
+ * for improved security — only the long-lived refresh token is persisted.
+ * Supports cross-tab synchronisation via the `storage` event.
+ */
+export class AuthStorage {
+	private refreshTokenKey: string;
+	private returnToKey: string;
+
+	constructor(prefix: string = DEFAULT_PREFIX) {
+		this.refreshTokenKey = `${prefix}_refresh_token`;
+		this.returnToKey = `${prefix}_return_to`;
+	}
+
+	// ── Refresh Token ─────────────────────────────────────────────────────
+
+	/** Retrieve the persisted refresh token, or null if absent. */
+	getRefreshToken(): string | null {
+		if (typeof window === "undefined") return null;
+		return localStorage.getItem(this.refreshTokenKey);
+	}
+
+	/** Persist a refresh token to localStorage. */
+	setRefreshToken(refreshToken: string): void {
+		if (typeof window === "undefined") return;
+		localStorage.setItem(this.refreshTokenKey, refreshToken);
+	}
+
+	/** Remove the persisted refresh token from localStorage. */
+	removeRefreshToken(): void {
+		if (typeof window === "undefined") return;
+		localStorage.removeItem(this.refreshTokenKey);
+	}
+
+	// ── Return-to URL (for post-login redirect) ─────────────────────────────
+
+	/** Pop the saved return-to URL from sessionStorage (one-time read). */
+	getReturnTo(): string | null {
+		if (typeof window === "undefined") return null;
+		const url = sessionStorage.getItem(this.returnToKey);
+		sessionStorage.removeItem(this.returnToKey);
+		return url;
+	}
+
+	/** Save a URL to redirect to after login completes. */
+	setReturnTo(url: string): void {
+		if (typeof window === "undefined") return;
+		sessionStorage.setItem(this.returnToKey, url);
+	}
+
+	// ── Cross-tab sync ──────────────────────────────────────────────────────
+
+	/** Subscribe to refresh token changes from other tabs. Returns an unsubscribe fn. */
+	onStorageChange(callback: (refreshToken: string | null) => void): () => void {
+		if (typeof window === "undefined") return () => {};
+
+		const handler = (e: StorageEvent) => {
+			if (e.key !== this.refreshTokenKey) return;
+			callback(e.newValue);
+		};
+
+		window.addEventListener("storage", handler);
+		return () => window.removeEventListener("storage", handler);
+	}
+}

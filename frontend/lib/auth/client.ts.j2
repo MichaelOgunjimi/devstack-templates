@@ -1,0 +1,576 @@
+import { AuthStorage } from "./storage";
+import type {
+  AuthChangeCallback,
+  AuthChangeEvent,
+  AuthClientOptions,
+  AuthResult,
+  OAuthProvider,
+  OAuthSignInOptions,
+  Token,
+  SignInCredentials,
+  SignUpCredentials,
+  Unsubscribe,
+  User,
+  UserResult,
+  UserUpdateData,
+} from "./types";
+
+/**
+ * Decode a JWT payload without a library (works for HS256 / RS256).
+ *
+ * @param token - Raw JWT string (header.payload.signature)
+ * @returns Parsed payload object, or null if decoding fails
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64 = token.split(".")[1];
+    const json = atob(base64.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Map backend snake_case user object to camelCase User interface.
+ *
+ * @param raw - Raw user object from the backend API
+ * @returns Mapped User with camelCase properties
+ */
+function mapUser(raw: Record<string, unknown>): User {
+  return {
+    id: raw.id as string,
+    email: raw.email as string,
+    fullName: (raw.full_name as string) ?? null,
+    isActive: (raw.is_active as boolean) ?? true,
+    isVerified: (raw.is_verified as boolean) ?? false,
+    createdAt: raw.created_at as string,
+  };
+}
+
+/**
+ * {{ project_name }} Auth Client
+ *
+ * Auth SDK for the {{ project_name }} FastAPI backend.
+ * Access tokens are held in memory only (never persisted to storage).
+ * Refresh tokens are persisted to localStorage for session continuity.
+ *
+ * @example
+ * ```ts
+ * const auth = new AuthClient({ apiUrl: "http://localhost:3101" });
+ * const { token, error } = await auth.signUp({ email, password, fullName });
+ * ```
+ */
+export class AuthClient {
+  private apiUrl: string;
+  private apiPrefix: string;
+  private storage: AuthStorage;
+  private autoRefresh: boolean;
+  private accessToken: string | null = null;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private listeners: Set<AuthChangeCallback> = new Set();
+  private initPromise: Promise<void> | null = null;
+
+  /**
+   * Create a new AuthClient instance.
+   *
+   * @param options - Configuration including API URL, API prefix, storage prefix, and auto-refresh toggle
+   */
+  constructor(options: AuthClientOptions) {
+    this.apiUrl = options.apiUrl.replace(/\/$/, "");
+    this.apiPrefix = options.apiPrefix ?? "/api/v1";
+    this.storage = new AuthStorage(options.storagePrefix);
+    this.autoRefresh = options.autoRefresh ?? true;
+
+    if (typeof window !== "undefined") {
+      this.initPromise = this.initialize();
+    }
+  }
+
+  // ── Initialisation ─────────────────────────────────────────────────────
+
+  /**
+   * Run once on construction (client-side only).
+   * Checks for OAuth callback tokens in the URL hash, restores an existing
+   * refresh token from storage, refreshes to obtain a fresh access token,
+   * and sets up cross-tab sync.
+   */
+  private async initialize(): Promise<void> {
+    // Check for OAuth callback tokens in URL fragment
+    const oauthToken = this.extractOAuthCallback();
+    if (oauthToken) {
+      this.accessToken = oauthToken.accessToken;
+      this.storage.setRefreshToken(oauthToken.refreshToken);
+      this.scheduleRefresh(oauthToken.accessToken);
+      window.history.replaceState(null, "", window.location.pathname);
+      this.emit("SIGNED_IN", oauthToken);
+      return;
+    }
+
+    // Restore from persisted refresh token
+    const refreshToken = this.storage.getRefreshToken();
+    if (refreshToken) {
+      // Always refresh on init — access token is memory-only
+      const result = await this.refresh();
+      if (result.error) {
+        this.storage.removeRefreshToken();
+        this.emit("SIGNED_OUT", null);
+        return;
+      }
+      this.emit("INITIAL_SESSION", result.token);
+    } else {
+      this.emit("INITIAL_SESSION", null);
+    }
+
+    // Cross-tab sync
+    this.storage.onStorageChange((newRefreshToken) => {
+      if (newRefreshToken) {
+        // Another tab signed in — refresh to get an access token
+        this.refresh().then((result) => {
+          if (result.token) {
+            this.emit("SIGNED_IN", result.token);
+          }
+        });
+      } else {
+        // Another tab signed out
+        this.accessToken = null;
+        this.clearRefreshTimer();
+        this.emit("SIGNED_OUT", null);
+      }
+    });
+  }
+
+  /**
+   * Wait for the initial token check to complete.
+   *
+   * @returns Resolves when initialisation (token restore, OAuth callback, refresh) is done
+   */
+  async waitForInit(): Promise<void> {
+    await this.initPromise;
+  }
+
+  // ── Auth methods ───────────────────────────────────────────────────────
+
+  /**
+   * Create a new account and receive tokens.
+   *
+   * @param credentials - Email, password, and full name for the new account
+   * @returns AuthResult with token + user on success, or error on failure
+   */
+  async signUp(credentials: SignUpCredentials): Promise<AuthResult> {
+    const res = await this.fetch("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email: credentials.email,
+        password: credentials.password,
+        full_name: credentials.fullName,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return {
+        token: null,
+        user: null,
+        error: {
+          message: body.detail ?? "Registration failed",
+          status: res.status,
+        },
+      };
+    }
+
+    const tokens = await res.json();
+    const token: Token = {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      tokenType: tokens.token_type ?? "bearer",
+    };
+
+    this.accessToken = token.accessToken;
+    this.storage.setRefreshToken(token.refreshToken);
+    this.scheduleRefresh(token.accessToken);
+    this.emit("SIGNED_IN", token);
+
+    const userResult = await this.getUser();
+
+    return {
+      token,
+      user: userResult.user,
+      error: null,
+    };
+  }
+
+  /**
+   * Sign in with email and password.
+   *
+   * @param credentials - Email and password
+   * @returns AuthResult with token + user on success, or error on failure
+   */
+  async signIn(credentials: SignInCredentials): Promise<AuthResult> {
+    const res = await this.fetch("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: credentials.email,
+        password: credentials.password,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return {
+        token: null,
+        user: null,
+        error: {
+          message: body.detail ?? "Login failed",
+          status: res.status,
+        },
+      };
+    }
+
+    const tokens = await res.json();
+    const token: Token = {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      tokenType: tokens.token_type ?? "bearer",
+    };
+
+    this.accessToken = token.accessToken;
+    this.storage.setRefreshToken(token.refreshToken);
+    this.scheduleRefresh(token.accessToken);
+    this.emit("SIGNED_IN", token);
+
+    const userResult = await this.getUser();
+
+    return {
+      token,
+      user: userResult.user,
+      error: null,
+    };
+  }
+
+  /**
+   * Redirect to an OAuth provider's login page.
+   * After auth, the backend redirects to `/auth/callback#access_token=...`
+   *
+   * @param options - Provider name or options object with provider and optional redirectTo
+   */
+  signInWithOAuth(options: OAuthSignInOptions): void;
+  /** @param provider - OAuth provider shorthand (e.g. "google") */
+  signInWithOAuth(provider: OAuthProvider): void;
+  signInWithOAuth(
+    providerOrOptions: OAuthProvider | OAuthSignInOptions,
+  ): void {
+    const opts: OAuthSignInOptions =
+      typeof providerOrOptions === "string"
+        ? { provider: providerOrOptions }
+        : providerOrOptions;
+
+    if (opts.redirectTo) {
+      this.storage.setReturnTo(opts.redirectTo);
+    } else if (typeof window !== "undefined") {
+      this.storage.setReturnTo(window.location.pathname);
+    }
+
+    const loginUrl = `${this.apiUrl}${this.apiPrefix}/oauth/${opts.provider}/login`;
+    window.location.href = loginUrl;
+  }
+
+  /**
+   * Sign out — revokes the refresh token on the backend and clears local state.
+   *
+   * @returns Resolves when local state is cleared (backend call may still be in-flight)
+   */
+  async signOut(): Promise<void> {
+    const refreshToken = this.storage.getRefreshToken();
+
+    if (refreshToken) {
+      this.fetch("/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      }).catch(() => {});
+    }
+
+    this.accessToken = null;
+    this.clearRefreshTimer();
+    this.storage.removeRefreshToken();
+    this.emit("SIGNED_OUT", null);
+  }
+
+  // ── Token methods ────────────────────────────────────────────────────
+
+  /**
+   * Build the current token pair from in-memory access token and persisted refresh token.
+   *
+   * @returns The Token pair or null if not authenticated
+   */
+  getToken(): Token | null {
+    const refreshToken = this.storage.getRefreshToken();
+    if (!this.accessToken || !refreshToken) return null;
+    return { accessToken: this.accessToken, refreshToken, tokenType: "bearer" };
+  }
+
+  /**
+   * Get the in-memory access token string, or null if not logged in.
+   *
+   * @returns JWT access token string or null
+   */
+  getAccessToken(): string | null {
+    return this.accessToken;
+  }
+
+  /**
+   * Exchange the current refresh token for a fresh access token.
+   *
+   * @returns AuthResult with new token on success, or error on failure
+   */
+  async refresh(): Promise<AuthResult> {
+    const refreshToken = this.storage.getRefreshToken();
+    if (!refreshToken) {
+      return {
+        token: null,
+        user: null,
+        error: { message: "No token to refresh", status: 401 },
+      };
+    }
+
+    const res = await this.fetch("/auth/refresh", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      headers: { "X-No-Retry": "1" },
+    });
+
+    if (!res.ok) {
+      this.accessToken = null;
+      this.clearRefreshTimer();
+      this.storage.removeRefreshToken();
+      this.emit("SIGNED_OUT", null);
+
+      const body = await res.json().catch(() => ({}));
+      return {
+        token: null,
+        user: null,
+        error: {
+          message: body.detail ?? "Token expired",
+          status: res.status,
+        },
+      };
+    }
+
+    const tokens = await res.json();
+    const newToken: Token = {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      tokenType: tokens.token_type ?? "bearer",
+    };
+
+    this.accessToken = newToken.accessToken;
+    this.storage.setRefreshToken(newToken.refreshToken);
+    this.scheduleRefresh(newToken.accessToken);
+    this.emit("TOKEN_REFRESHED", newToken);
+
+    return { token: newToken, user: null, error: null };
+  }
+
+  /**
+   * Get the saved post-login redirect URL (one-time read, clears after access).
+   *
+   * @returns URL string or null if none was saved
+   */
+  getReturnTo(): string | null {
+    return this.storage.getReturnTo();
+  }
+
+  // ── User methods ───────────────────────────────────────────────────────
+
+  /**
+   * Fetch the current user's profile from the backend.
+   *
+   * @returns UserResult with user on success, or error on failure
+   */
+  async getUser(): Promise<UserResult> {
+    const res = await this.authFetch("/auth/me");
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return {
+        user: null,
+        error: {
+          message: body.detail ?? "Failed to fetch user",
+          status: res.status,
+        },
+      };
+    }
+
+    const raw = await res.json();
+    return { user: mapUser(raw), error: null };
+  }
+
+  /**
+   * Update the current user's profile.
+   * Emits `USER_UPDATED` on success.
+   *
+   * @param data - Fields to update (fullName, email)
+   * @returns UserResult with updated user on success, or error on failure
+   */
+  async updateUser(data: UserUpdateData): Promise<UserResult> {
+    const payload: Record<string, unknown> = {};
+    if (data.fullName !== undefined) payload.full_name = data.fullName;
+    if (data.email !== undefined) payload.email = data.email;
+
+    const res = await this.authFetch("/auth/me", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return {
+        user: null,
+        error: {
+          message: body.detail ?? "Failed to update user",
+          status: res.status,
+        },
+      };
+    }
+
+    const raw = await res.json();
+    const user = mapUser(raw);
+    this.emit("USER_UPDATED", this.getToken());
+    return { user, error: null };
+  }
+
+  // ── Events ─────────────────────────────────────────────────────────────
+
+  /**
+   * Subscribe to auth state changes.
+   *
+   * @param callback - Function called with the event name and current token
+   * @returns Object with an `unsubscribe` method to remove the listener
+   */
+  onAuthStateChange(callback: AuthChangeCallback): Unsubscribe {
+    this.listeners.add(callback);
+    return {
+      unsubscribe: () => {
+        this.listeners.delete(callback);
+      },
+    };
+  }
+
+  private emit(event: AuthChangeEvent, token: Token | null): void {
+    for (const cb of this.listeners) {
+      try {
+        cb(event, token);
+      } catch (e) {
+        console.error("[auth] listener error:", e);
+      }
+    }
+  }
+
+  // ── OAuth callback extraction ──────────────────────────────────────────
+
+  /**
+   * Parse OAuth callback tokens from the URL hash fragment.
+   * Returns a Token if `#access_token=...&refresh_token=...` is present, else null.
+   */
+  private extractOAuthCallback(): Token | null {
+    if (typeof window === "undefined") return null;
+
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2) return null;
+
+    const params = new URLSearchParams(hash.substring(1));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    if (!accessToken || !refreshToken) return null;
+
+    return {
+      accessToken,
+      refreshToken,
+      tokenType: params.get("token_type") ?? "bearer",
+    };
+  }
+
+  // ── Auto-refresh ───────────────────────────────────────────────────────
+
+  /**
+   * Schedule a silent token refresh 60 seconds before the access token expires.
+   */
+  private scheduleRefresh(accessToken: string): void {
+    if (!this.autoRefresh) return;
+    this.clearRefreshTimer();
+
+    const payload = decodeJwtPayload(accessToken);
+    const exp = payload?.exp as number | undefined;
+    if (!exp) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const refreshIn = Math.max((exp - now - 60) * 1000, 0);
+
+    this.refreshTimer = setTimeout(() => {
+      this.refresh();
+    }, refreshIn);
+  }
+
+  private clearRefreshTimer(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
+  // ── Internal fetch helpers ─────────────────────────────────────────────
+
+  /**
+   * Base fetch helper — sends JSON requests without auth headers.
+   * Prepends `apiPrefix` to the path automatically.
+   */
+  private fetch(path: string, init: RequestInit = {}): Promise<Response> {
+    const extra = init.headers as Record<string, string> | undefined;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...extra,
+    };
+
+    return fetch(`${this.apiUrl}${this.apiPrefix}${path}`, { ...init, headers });
+  }
+
+  /**
+   * Authenticated fetch — attaches Bearer token and retries once on 401.
+   * Prepends `apiPrefix` to the path automatically.
+   */
+  async authFetch(path: string, init: RequestInit = {}): Promise<Response> {
+    if (!this.accessToken) {
+      return new Response(JSON.stringify({ detail: "Not authenticated" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const extra = init.headers as Record<string, string> | undefined;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.accessToken}`,
+      ...extra,
+    };
+
+    const url = `${this.apiUrl}${this.apiPrefix}${path}`;
+    const res = await fetch(url, { ...init, headers });
+
+    // If 401 and we haven't already retried, try refreshing the token
+    if (res.status === 401 && !extra?.["X-No-Retry"]) {
+      const refreshResult = await this.refresh();
+      if (refreshResult.token) {
+        const retryHeaders: Record<string, string> = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${refreshResult.token.accessToken}`,
+          "X-No-Retry": "1",
+          ...extra,
+        };
+        return fetch(url, { ...init, headers: retryHeaders });
+      }
+    }
+
+    return res;
+  }
+}

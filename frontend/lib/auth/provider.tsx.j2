@@ -1,0 +1,229 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { AuthClient } from "./client";
+import type {
+  AuthChangeEvent,
+  AuthClientOptions,
+  AuthResult,
+  AuthState,
+  OAuthProvider,
+  OAuthSignInOptions,
+  Token,
+  SignInCredentials,
+  SignUpCredentials,
+  UserResult,
+  UserUpdateData,
+} from "./types";
+
+// ─── Context types ───────────────────────────────────────────────────────────
+
+/** Value exposed by the AuthContext — extends AuthState with all auth actions. */
+export interface AuthContextValue extends AuthState {
+  isAuthenticated: boolean;
+  signUp: (credentials: SignUpCredentials) => Promise<AuthResult>;
+  signIn: (credentials: SignInCredentials) => Promise<AuthResult>;
+  signInWithOAuth: (
+    providerOrOptions: OAuthProvider | OAuthSignInOptions,
+  ) => void;
+  signOut: () => Promise<void>;
+  refresh: () => Promise<AuthResult>;
+  getUser: () => Promise<UserResult>;
+  updateUser: (data: UserUpdateData) => Promise<UserResult>;
+  client: AuthClient;
+}
+
+/** React context for auth state — null when used outside of AuthProvider. */
+export const AuthContext = createContext<AuthContextValue | null>(null);
+
+// ─── Provider ────────────────────────────────────────────────────────────────
+
+interface AuthProviderProps {
+  children: React.ReactNode;
+  options?: Partial<AuthClientOptions>;
+}
+
+{% if frontend == "nextjs" %}
+const DEFAULT_API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3101";
+{% else %}
+const DEFAULT_API_URL =
+  import.meta.env.VITE_API_URL ?? "http://localhost:3101";
+{% endif %}
+
+/**
+ * Auth context provider — initialises the AuthClient, subscribes to auth
+ * events, and exposes reactive state + auth actions to the component tree.
+ *
+ * Wrap your app with `<AuthProvider>` and consume via `useAuth()`.
+ */
+export function AuthProvider({ children, options }: AuthProviderProps) {
+  const [client] = useState(
+    () =>
+      new AuthClient({
+        apiUrl: options?.apiUrl ?? DEFAULT_API_URL,
+        storagePrefix: options?.storagePrefix,
+        autoRefresh: options?.autoRefresh,
+      }),
+  );
+
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    token: null,
+    isLoading: true,
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchUser = async (token: Token | null) => {
+      if (!token || !mounted) return;
+      const result = await client.getUser();
+      if (mounted && result.user) {
+        setState((s) => ({ ...s, user: result.user }));
+      }
+    };
+
+    const { unsubscribe } = client.onAuthStateChange(
+      (event: AuthChangeEvent, token: Token | null) => {
+        if (!mounted) return;
+
+        switch (event) {
+          case "INITIAL_SESSION":
+            setState({
+              token,
+              user: null,
+              isLoading: token !== null,
+            });
+            if (token) {
+              fetchUser(token).then(() => {
+                if (mounted) setState((s) => ({ ...s, isLoading: false }));
+              });
+            } else {
+              setState((s) => ({ ...s, isLoading: false }));
+            }
+            break;
+
+          case "SIGNED_IN":
+            setState({ token: token, user: null, isLoading: true });
+            fetchUser(token).then(() => {
+              if (mounted) setState((s) => ({ ...s, isLoading: false }));
+            });
+            break;
+
+          case "SIGNED_OUT":
+            setState({ token: null, user: null, isLoading: false });
+            break;
+
+          case "TOKEN_REFRESHED":
+            setState((s) => ({ ...s,  token }));
+            break;
+
+          case "USER_UPDATED":
+            fetchUser(token);
+            break;
+        }
+      },
+    );
+
+    client.waitForInit();
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [client]);
+
+  const signUp = useCallback(
+    async (creds: SignUpCredentials) => {
+      const result = await client.signUp(creds);
+      if (result.user) {
+        setState((s) => ({ ...s, user: result.user }));
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const signIn = useCallback(
+    async (creds: SignInCredentials) => {
+      const result = await client.signIn(creds);
+      if (result.user) {
+        setState((s) => ({ ...s, user: result.user }));
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const signInWithOAuth = useCallback(
+    (providerOrOptions: OAuthProvider | OAuthSignInOptions) => {
+      client.signInWithOAuth(
+        providerOrOptions as OAuthProvider & OAuthSignInOptions,
+      );
+    },
+    [client],
+  );
+
+  const signOut = useCallback(async () => {
+    await client.signOut();
+  }, [client]);
+
+  const refresh = useCallback(async () => {
+    return client.refresh();
+  }, [client]);
+
+  const getUser = useCallback(async () => {
+    const result = await client.getUser();
+    if (result.user) {
+      setState((s) => ({ ...s, user: result.user }));
+    }
+    return result;
+  }, [client]);
+
+  const updateUser = useCallback(
+    async (data: UserUpdateData) => {
+      const result = await client.updateUser(data);
+      if (result.user) {
+        setState((s) => ({ ...s, user: result.user }));
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      ...state,
+      isAuthenticated: state.token !== null,
+      signUp,
+      signIn,
+      signInWithOAuth,
+      signOut,
+      refresh,
+      getUser,
+      updateUser,
+      client,
+    }),
+    [
+      state,
+      signUp,
+      signIn,
+      signInWithOAuth,
+      signOut,
+      refresh,
+      getUser,
+      updateUser,
+      client,
+    ],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

@@ -1,0 +1,26 @@
+"use client";
+
+import { AuthProvider } from "@/lib/auth";
+import { QueryProvider } from "@/lib/query";
+
+/**
+{% if frontend == "nextjs" %}
+ * Root providers wrapper. Drop this into your app/layout.tsx:
+{% else %}
+ * Root providers wrapper. Drop this into your main.tsx:
+{% endif %}
+ *
+ * ```tsx
+ * <Providers>{children}</Providers>
+ * ```
+ *
+ * Composes: AuthProvider → QueryProvider
+ * Auth initializes first so queries can use the JWT token.
+ */
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <QueryProvider>{children}</QueryProvider>
+    </AuthProvider>
+  );
+}
