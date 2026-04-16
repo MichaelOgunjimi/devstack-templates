@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     NOTIFY_API_KEY: str = ""
 
     # App
+    BACKEND_URL: str = "http://localhost:3101"
     FRONTEND_URL: str = "http://localhost:3100"
     ENVIRONMENT: str = "development"
     SENTRY_DSN: str = ""

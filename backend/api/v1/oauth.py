@@ -6,6 +6,7 @@ Each provider has a small, dedicated helper that knows its endpoints.
 """
 
 from typing import Any
+from urllib.parse import urlencode
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
@@ -13,7 +14,6 @@ from fastapi.responses import RedirectResponse
 
 from api.deps import RedisDep, SessionDep
 from core.config import settings
-from schemas.auth import TokenResponse
 from services.auth import create_user_tokens, get_or_create_oauth_user
 
 logger = structlog.get_logger(__name__)
@@ -70,7 +70,7 @@ def _get_provider_config(provider: str) -> dict[str, str]:
 
 
 def _callback_url(provider: str) -> str:
-    return f"{settings.FRONTEND_URL}/oauth/{provider}/callback"
+    return f"{settings.BACKEND_URL}/api/v1/oauth/{provider}/callback"
 
 
 # ---------------------------------------------------------------------------
@@ -82,8 +82,6 @@ def _callback_url(provider: str) -> str:
 async def oauth_login(provider: str) -> RedirectResponse:
     """Redirect the user to the provider's OAuth consent screen."""
     cfg = _get_provider_config(provider)
-
-    from urllib.parse import urlencode
 
     params = {
         "client_id": cfg["client_id"],
@@ -101,14 +99,14 @@ async def oauth_login(provider: str) -> RedirectResponse:
     return RedirectResponse(url=redirect_to)
 
 
-@router.get("/{provider}/callback", response_model=TokenResponse)
+@router.get("/{provider}/callback")
 async def oauth_callback(
     provider: str,
     code: str,
     db: SessionDep,
     redis: RedisDep,
-) -> TokenResponse:
-    """Handle the provider callback, exchange code for token, return app tokens."""
+) -> RedirectResponse:
+    """Handle the provider callback, exchange code for token, redirect with app tokens."""
     import httpx
 
     cfg = _get_provider_config(provider)
@@ -133,9 +131,8 @@ async def oauth_callback(
             provider=provider,
             status=token_resp.status_code,
         )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to exchange authorization code with provider",
+        return RedirectResponse(
+            f"{settings.FRONTEND_URL}/auth/callback?error=token_exchange_failed"
         )
 
     token_data: dict[str, Any] = token_resp.json()
@@ -155,9 +152,8 @@ async def oauth_callback(
             )
 
     if userinfo_resp.status_code != 200:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to fetch user info from provider",
+        return RedirectResponse(
+            f"{settings.FRONTEND_URL}/auth/callback?error=userinfo_failed"
         )
 
     userinfo: dict[str, Any] = userinfo_resp.json()
@@ -166,9 +162,8 @@ async def oauth_callback(
     email, full_name, provider_account_id = _extract_user_info(provider, userinfo)
 
     if not email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provider did not return an email address",
+        return RedirectResponse(
+            f"{settings.FRONTEND_URL}/auth/callback?error=no_email"
         )
 
     # 4. Auto-link or create user.
@@ -182,7 +177,15 @@ async def oauth_callback(
     )
 
     logger.info("oauth.callback.success", provider=provider, user_id=str(user.id))
-    return await create_user_tokens(user, db, redis)
+    tokens = await create_user_tokens(user, db, redis)
+
+    # Redirect to frontend with tokens in the URL fragment (never sent to servers).
+    fragment = urlencode({
+        "access_token": tokens.access_token,
+        "refresh_token": tokens.refresh_token,
+        "token_type": tokens.token_type,
+    })
+    return RedirectResponse(f"{settings.FRONTEND_URL}/auth/callback#{fragment}")
 
 
 def _extract_user_info(provider: str, userinfo: dict[str, Any]) -> tuple[str, str | None, str]:
