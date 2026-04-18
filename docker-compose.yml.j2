@@ -109,6 +109,28 @@ services:
     restart: unless-stopped
 
 {% endif %}
+{% if "celery" in optional %}
+  celery-worker:
+    build: ./backend
+    command: celery -A services.celery worker --loglevel=info
+    env_file: ./backend/.env
+{% if "postgres" in services or "redis" in services %}
+    depends_on:
+{% if "redis" in services %}
+      redis:
+        condition: service_started
+{% endif %}
+{% if "postgres" in services %}
+      postgres:
+        condition: service_healthy
+{% endif %}
+{% endif %}
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    restart: unless-stopped
+
+{% endif %}
 {% if "elasticsearch" in optional %}
   elasticsearch:
     image: elasticsearch:8.13.0

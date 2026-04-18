@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Celery (requires redis)
+    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+
+    # Elasticsearch
+    ELASTICSEARCH_URL: str = "http://localhost:9200"
+
     # JWT
     JWT_SECRET: str = "change-me-to-a-random-secret"
     JWT_ALGORITHM: str = "HS256"
