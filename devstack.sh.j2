@@ -30,6 +30,10 @@ case "${1:-help}" in
     $COMPOSE down --rmi all
     $COMPOSE up -d --build
     ;;
+  add)
+    shift
+    devstack add "$@"
+    ;;
   restart)
     $COMPOSE down && $COMPOSE up -d
     ;;
@@ -50,7 +54,7 @@ case "${1:-help}" in
     $COMPOSE ps
     ;;
   *)
-    echo "Usage: ./devstack {up|build [svc]|rebuild|down|restart|logs [svc]|exec <svc> <cmd>|shell|migrate|status}"
+    echo "Usage: ./devstack {up|build [svc]|rebuild|down|restart|add <svc...>|logs [svc]|exec <svc> <cmd>|shell|migrate|status}"
     exit 1
     ;;
 esac
