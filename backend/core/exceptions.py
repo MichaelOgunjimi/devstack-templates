@@ -13,3 +13,11 @@ class NotificationServiceError(Exception):
 
 class StorageNotConfiguredError(Exception):
     """Raised when MinIO environment variables are not set."""
+
+
+class StripeNotConfiguredError(Exception):
+    """Raised when Stripe API keys are not set."""
+
+
+class EmailNotConfiguredError(Exception):
+    """Raised when SMTP settings are not configured."""
