@@ -53,8 +53,46 @@ case "${1:-help}" in
   status)
     $COMPOSE ps
     ;;
+  db)
+    shift
+    case "${1:-help}" in
+      migrate)
+        $COMPOSE exec backend alembic upgrade head
+        ;;
+      reset)
+        echo "Resetting database for $PROJECT_NAME..."
+        $COMPOSE stop postgres
+        $COMPOSE rm -f postgres
+        docker volume rm "${PROJECT_NAME}_postgres_data" 2>/dev/null || true
+        $COMPOSE up -d postgres
+        echo "Waiting for postgres..."
+        sleep 5
+        $COMPOSE exec backend alembic upgrade head
+        echo "Database reset complete."
+        ;;
+      shell)
+        $COMPOSE exec postgres psql -U devstack -d "$PROJECT_NAME"
+        ;;
+      dump)
+        OUT="${2:-${PROJECT_NAME}_dump.sql}"
+        $COMPOSE exec -T postgres pg_dump -U devstack -d "$PROJECT_NAME" > "$OUT"
+        echo "Dumped to $OUT"
+        ;;
+      *)
+        echo "Usage: ./devstack db {migrate|reset|shell|dump [file]}"
+        exit 1
+        ;;
+    esac
+    ;;
+  env)
+    echo "=== backend/.env ==="
+    cat backend/.env 2>/dev/null || echo "(not found)"
+    echo ""
+    echo "=== frontend/.env.local ==="
+    cat frontend/.env.local 2>/dev/null || echo "(not found)"
+    ;;
   *)
-    echo "Usage: ./devstack {up|build [svc]|rebuild|down|restart|add <svc...>|logs [svc]|exec <svc> <cmd>|shell|migrate|status}"
+    echo "Usage: ./devstack {up|build [svc]|rebuild|down|restart|add <svc...>|logs [svc]|exec <svc> <cmd>|shell|migrate|status|db <cmd>|env}"
     exit 1
     ;;
 esac
