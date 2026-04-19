@@ -5,7 +5,7 @@
 set -euo pipefail
 
 PROJECT_NAME="{{ project_name }}"
-COMPOSE="docker compose"
+COMPOSE="docker compose{% for p in profiles %} --profile {{ p }}{% endfor %}"
 
 case "${1:-help}" in
   up)
