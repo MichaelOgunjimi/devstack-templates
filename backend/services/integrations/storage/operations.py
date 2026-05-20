@@ -6,7 +6,14 @@ import structlog
 from core.config import settings
 from core.exceptions import StorageNotConfiguredError
 
-from .client import ensure_bucket, list_objects, presigned_get, put_object, remove_object, stat_object
+from .client import (
+    ensure_bucket,
+    list_objects,
+    presigned_get,
+    put_object,
+    remove_object,
+    stat_object,
+)
 from .schemas import StorageFile, UploadResult
 
 logger = structlog.get_logger(__name__)
@@ -61,7 +68,11 @@ async def upload_image(
     guessed_type, _ = mimetypes.guess_type(filename)
     logger.info("storage.upload_image.attempt", key=filename, guessed_type=guessed_type)
     if not guessed_type or not guessed_type.startswith("image/"):
-        logger.error("storage.upload_image.invalid_content_type", key=filename, guessed_type=guessed_type)
+        logger.error(
+            "storage.upload_image.invalid_content_type",
+            key=filename,
+            guessed_type=guessed_type,
+        )
         raise ValueError("upload_image requires an image filename/content type")
 
     return await upload_file(

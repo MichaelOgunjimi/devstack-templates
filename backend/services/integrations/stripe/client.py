@@ -35,7 +35,9 @@ def _ensure_configured() -> None:
 def get_publishable_key() -> str:
     """Return the publishable key for frontend Stripe initialization."""
     if not settings.STRIPE_PUBLISHABLE_KEY:
-        raise StripeNotConfiguredError("STRIPE_PUBLISHABLE_KEY must be set to use Stripe frontend flows")
+        raise StripeNotConfiguredError(
+            "STRIPE_PUBLISHABLE_KEY must be set to use Stripe frontend flows"
+        )
     return settings.STRIPE_PUBLISHABLE_KEY
 
 

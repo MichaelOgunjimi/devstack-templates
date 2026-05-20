@@ -1,0 +1,40 @@
+# Development
+
+## Project Shape
+
+This project was generated from the `{{ stack }}` DevStack template.
+
+- Backend: `backend/`
+{% if frontend -%}
+- Frontend: `frontend/`
+{% endif -%}
+- Compose file: `docker-compose.yml`
+- DevStack metadata: `.devstack.json`
+
+## Backend Checks
+
+```bash
+cd backend
+uv sync
+uv run ruff check .
+uv run pytest
+```
+
+## Docker Workflow
+
+Use the global DevStack command from the project root:
+
+```bash
+devstack up
+devstack logs
+devstack down
+```
+
+Use the `Makefile` when you want shorter aliases.
+
+## Environment
+
+`backend/.env` is generated for the selected services. `backend/.env.example`
+shows the full set of supported variables.
+
+Do not commit real secrets.

@@ -1,3 +1,5 @@
+# ruff: noqa: E501
+
 from html import escape
 from pathlib import Path
 
@@ -71,4 +73,3 @@ def render_inline(
     </table>
   </body>
 </html>"""
-

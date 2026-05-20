@@ -152,9 +152,7 @@ async def oauth_callback(
             )
 
     if userinfo_resp.status_code != 200:
-        return RedirectResponse(
-            f"{settings.FRONTEND_URL}/auth/callback?error=userinfo_failed"
-        )
+        return RedirectResponse(f"{settings.FRONTEND_URL}/auth/callback?error=userinfo_failed")
 
     userinfo: dict[str, Any] = userinfo_resp.json()
 
@@ -162,9 +160,7 @@ async def oauth_callback(
     email, full_name, provider_account_id = _extract_user_info(provider, userinfo)
 
     if not email:
-        return RedirectResponse(
-            f"{settings.FRONTEND_URL}/auth/callback?error=no_email"
-        )
+        return RedirectResponse(f"{settings.FRONTEND_URL}/auth/callback?error=no_email")
 
     # 4. Auto-link or create user.
     user = await get_or_create_oauth_user(
@@ -180,11 +176,13 @@ async def oauth_callback(
     tokens = await create_user_tokens(user, db, redis)
 
     # Redirect to frontend with tokens in the URL fragment (never sent to servers).
-    fragment = urlencode({
-        "access_token": tokens.access_token,
-        "refresh_token": tokens.refresh_token,
-        "token_type": tokens.token_type,
-    })
+    fragment = urlencode(
+        {
+            "access_token": tokens.access_token,
+            "refresh_token": tokens.refresh_token,
+            "token_type": tokens.token_type,
+        }
+    )
     return RedirectResponse(f"{settings.FRONTEND_URL}/auth/callback#{fragment}")
 
 

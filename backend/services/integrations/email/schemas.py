@@ -19,4 +19,3 @@ class EmailMessage(BaseModel):
     text_body: str | None = None
     reply_to: str | None = None
     attachments: list[EmailAttachment] = Field(default_factory=list)
-

@@ -1,0 +1,35 @@
+.PHONY: up down rebuild logs status shell migrate test lint format install
+
+up:
+	devstack up
+
+down:
+	devstack down
+
+rebuild:
+	devstack rebuild
+
+logs:
+	devstack logs
+
+status:
+	devstack status
+
+shell:
+	devstack exec backend bash
+
+migrate:
+	devstack db migrate
+
+test:
+	cd backend && uv run pytest
+
+lint:
+	cd backend && uv run ruff check .
+
+format:
+	cd backend && uv run ruff format .
+
+install:
+	cd backend && uv sync
+

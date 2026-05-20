@@ -14,7 +14,9 @@ logger = structlog.get_logger(__name__)
 def construct_event(payload: bytes, sig_header: str) -> WebhookEvent:
     _ensure_configured()
     if not settings.STRIPE_WEBHOOK_SECRET:
-        raise StripeNotConfiguredError("STRIPE_WEBHOOK_SECRET must be set to verify webhook signatures")
+        raise StripeNotConfiguredError(
+            "STRIPE_WEBHOOK_SECRET must be set to verify webhook signatures"
+        )
 
     try:
         event = stripe.Webhook.construct_event(
@@ -32,7 +34,11 @@ def construct_event(payload: bytes, sig_header: str) -> WebhookEvent:
         data=dict(event["data"]),
         created=datetime.fromtimestamp(event["created"], tz=UTC),
     )
-    logger.info("stripe.webhook.constructed", event_id=webhook_event.id, event_type=webhook_event.type)
+    logger.info(
+        "stripe.webhook.constructed",
+        event_id=webhook_event.id,
+        event_type=webhook_event.type,
+    )
     return webhook_event
 
 

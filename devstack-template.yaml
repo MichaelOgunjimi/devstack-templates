@@ -1,0 +1,157 @@
+manifest_version: 1
+name: "Official DevStack Templates"
+description: "Project templates maintained for devstack-cli."
+
+devstack_cli:
+  min_version: "0.1.0"
+  max_version: null
+
+stacks:
+  - id: fastapi-next
+    name: "FastAPI + Next.js"
+    backend: fastapi
+    frontend: nextjs
+    default_services:
+      - postgres
+      - redis
+    optional_features:
+      - minio
+      - mailhog
+      - elasticsearch
+      - websockets
+      - celery
+      - stripe
+      - email
+    required_tools:
+      - docker
+      - uv
+      - node
+    templates:
+      compose: docker-compose.yml.j2
+      backend: backend
+      frontend_shared: frontend/lib
+    project_outputs:
+      files:
+        - from: project/README.md.j2
+          to: README.md
+        - from: project/Makefile.j2
+          to: Makefile
+        - from: project/docs/DEVELOPMENT.md.j2
+          to: docs/DEVELOPMENT.md
+
+services:
+  - id: postgres
+    name: "Postgres"
+    category: database
+    compose_profile: postgres
+    env:
+      DATABASE_URL: "postgresql+asyncpg://devstack:devstack@postgres:5432/{{ project_name }}"
+    backend_dependencies:
+      - "asyncpg>=0.29"
+      - "sqlalchemy[asyncio]>=2.0"
+      - "sqlmodel>=0.0.21"
+      - "alembic>=1.13"
+    copy_files: []
+
+  - id: redis
+    name: "Redis"
+    category: cache
+    compose_profile: redis
+    env:
+      REDIS_URL: "redis://redis:6379/0"
+    backend_dependencies:
+      - "redis>=5.0"
+    copy_files:
+      - from: backend/core/redis.py
+        to: backend/core/redis.py
+
+  - id: minio
+    name: "MinIO"
+    category: storage
+    compose_profile: storage
+    env:
+      MINIO_ENDPOINT: "localhost:{{ ports.minio }}"
+      MINIO_ACCESS_KEY: "devstack"
+      MINIO_SECRET_KEY: "devstack123"
+      MINIO_BUCKET: "{{ project_name }}"
+    backend_dependencies:
+      - "minio>=7.2"
+    copy_files:
+      - from: backend/services/integrations/storage
+        to: backend/services/integrations/storage
+
+  - id: mailhog
+    name: "MailHog"
+    category: email
+    compose_profile: dev
+    env: {}
+    backend_dependencies: []
+    copy_files: []
+
+  - id: elasticsearch
+    name: "Elasticsearch"
+    category: search
+    compose_profile: search
+    env:
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+    backend_dependencies:
+      - "elasticsearch[async]>=8.13"
+    copy_files:
+      - from: backend/services/search.py
+        to: backend/services/search.py
+
+  - id: websockets
+    name: "WebSockets"
+    category: feature
+    compose_profile: null
+    env: {}
+    backend_dependencies: []
+    copy_files:
+      - from: backend/api/v1/websocket.py
+        to: backend/api/v1/websocket.py
+
+  - id: celery
+    name: "Celery"
+    category: feature
+    compose_profile: celery
+    env:
+      CELERY_BROKER_URL: "redis://redis:6379/1"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+    backend_dependencies:
+      - "celery[redis]>=5.4"
+    copy_files:
+      - from: backend/services/celery.py
+        to: backend/services/celery.py
+
+  - id: stripe
+    name: "Stripe"
+    category: integration
+    compose_profile: null
+    env:
+      STRIPE_SECRET_KEY: ""
+      STRIPE_PUBLISHABLE_KEY: ""
+      STRIPE_WEBHOOK_SECRET: ""
+      STRIPE_CONNECT_CLIENT_ID: ""
+    backend_dependencies:
+      - "stripe>=10.0"
+    copy_files:
+      - from: backend/services/integrations/stripe
+        to: backend/services/integrations/stripe
+
+  - id: email
+    name: "Email"
+    category: integration
+    compose_profile: null
+    env:
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+      SMTP_FROM_EMAIL: ""
+      SMTP_FROM_NAME: ""
+      SMTP_USE_TLS: "true"
+    backend_dependencies:
+      - "aiosmtplib>=3.0"
+    copy_files:
+      - from: backend/services/integrations/email
+        to: backend/services/integrations/email
