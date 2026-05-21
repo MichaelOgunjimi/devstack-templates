@@ -1,18 +1,25 @@
 import structlog
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select
-from sqlmodel import col
 
 from api.deps import CurrentActiveUserDep, RedisDep, SessionDep
-from core.security import create_access_token, decode_token, hash_password
-from models.token import RefreshToken
+from core.security import decode_token
 from models.user import User
-from schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
+from schemas.auth import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    LoginRequest,
+    MessageResponse,
+    RefreshRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    TokenResponse,
+    VerifyEmailRequest,
+)
 from schemas.user import UserRead, UserUpdate
+from services import auth as auth_svc
 from services.auth import authenticate_user, create_user_tokens, revoke_refresh_token
-from utils.datetime import utc_now
 
 logger = structlog.get_logger(__name__)
 
@@ -28,25 +35,16 @@ async def register(
     body: RegisterRequest,
     db: SessionDep,
     redis: RedisDep,
+    background_tasks: BackgroundTasks,
 ) -> TokenResponse:
     """Create a new user account and return tokens."""
-    result = await db.execute(select(User).where(col(User.email) == body.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists",
-        )
-
-    user = User(
-        email=body.email,
-        hashed_password=hash_password(body.password),
-        full_name=body.full_name,
+    user = await auth_svc.register_user(body, db)
+    background_tasks.add_task(
+        auth_svc.send_verify_email,
+        email=user.email,
+        name=user.full_name or "",
+        user_id=str(user.id),
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
-    logger.info("auth.register.success", user_id=str(user.id))
     return await create_user_tokens(user, db, redis)
 
 
@@ -77,56 +75,7 @@ async def refresh(
     db: SessionDep,
     redis: RedisDep,
 ) -> TokenResponse:
-    """Exchange a valid refresh token for a new access token.
-
-    Lookup order: Redis first (fast path), then DB (fallback + Redis backfill).
-    """
-    payload = decode_token(body.refresh_token)
-
-    jti: str | None = payload.get("jti")
-    if not jti:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
-        )
-
-    token_type: str | None = payload.get("type")
-    if token_type != "refresh":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not a refresh token")
-
-    redis_key = f"refresh:{jti}"
-
-    # Fast path: check Redis.
-    user_id = await redis.get(redis_key)
-
-    if not user_id:
-        # Fallback: check DB and backfill Redis if still valid.
-        result = await db.execute(select(RefreshToken).where(col(RefreshToken.jti) == jti))
-        db_token = result.scalar_one_or_none()
-
-        if not db_token or db_token.revoked:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Refresh token has been revoked",
-            )
-        if db_token.expires_at < utc_now():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Refresh token has expired",
-            )
-
-        user_id = str(db_token.user_id)
-        # Backfill Redis for subsequent requests.
-        remaining_ttl = int((db_token.expires_at - utc_now()).total_seconds())
-        if remaining_ttl > 0:
-            await redis.setex(redis_key, remaining_ttl, user_id)
-
-    # Issue a new access token only (keep the same refresh token).
-    new_access_token = create_access_token({"sub": user_id})
-    return TokenResponse(
-        access_token=new_access_token,
-        refresh_token=body.refresh_token,
-    )
+    return await auth_svc.refresh_access_token(body.refresh_token, db, redis)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -159,14 +108,87 @@ async def update_me(
     user: CurrentActiveUserDep,
     db: SessionDep,
 ) -> User:
-    update_data = body.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(user, field, value)
+    return await auth_svc.update_user(user, body, db)
 
-    user.updated_at = utc_now()
 
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    logger.info("auth.me.updated", user_id=str(user.id))
-    return user
+@router.post("/verify-email", response_model=MessageResponse)
+async def verify_email(body: VerifyEmailRequest, db: SessionDep) -> MessageResponse:
+    user, newly_verified = await auth_svc.verify_user_email(body.token, db)
+    if newly_verified:
+        logger.info("auth.verify_email.completed", user_id=str(user.id))
+        return MessageResponse(message="Email verified successfully")
+    return MessageResponse(message="Email already verified")
+
+
+@router.post("/resend-verification", response_model=MessageResponse)
+@limiter.limit("3/minute")
+async def resend_verification(
+    request: Request,
+    user: CurrentActiveUserDep,
+    background_tasks: BackgroundTasks,
+) -> MessageResponse:
+    if user.is_verified:
+        return MessageResponse(message="Email already verified")
+    background_tasks.add_task(
+        auth_svc.send_verify_email,
+        email=user.email,
+        name=user.full_name or "",
+        user_id=str(user.id),
+    )
+    return MessageResponse(message="Verification email sent")
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+@limiter.limit("3/minute")
+async def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: SessionDep,
+    background_tasks: BackgroundTasks,
+) -> MessageResponse:
+    user = await auth_svc.initiate_password_reset(body.email, db)
+    if user:
+        background_tasks.add_task(
+            auth_svc.send_reset_email,
+            email=user.email,
+            name=user.full_name or "",
+            user_id=str(user.id),
+        )
+    return MessageResponse(
+        message="If an account exists with this email, a reset link has been sent"
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+@limiter.limit("5/minute")
+async def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    db: SessionDep,
+    background_tasks: BackgroundTasks,
+) -> MessageResponse:
+    user = await auth_svc.reset_user_password(body, db)
+    background_tasks.add_task(
+        auth_svc.send_password_changed_email,
+        email=user.email,
+        name=user.full_name or "",
+        user_id=str(user.id),
+    )
+    return MessageResponse(message="Password has been reset successfully")
+
+
+@router.post("/change-password", response_model=MessageResponse)
+async def change_password(
+    body: ChangePasswordRequest,
+    user: CurrentActiveUserDep,
+    db: SessionDep,
+    background_tasks: BackgroundTasks,
+) -> MessageResponse:
+    await auth_svc.change_user_password(user, body, db)
+    background_tasks.add_task(
+        auth_svc.send_password_changed_email,
+        email=user.email,
+        name=user.full_name or "",
+        user_id=str(user.id),
+    )
+    return MessageResponse(message="Password changed successfully")

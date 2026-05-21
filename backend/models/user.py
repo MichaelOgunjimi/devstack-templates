@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -19,6 +19,7 @@ class User(SQLModel, table=True):
     # Nullable: OAuth-only users never set a password.
     hashed_password: str | None = Field(default=None, nullable=True)
     full_name: str | None = Field(default=None, max_length=255)
+    role: str = Field(default="user", max_length=20)
     is_active: bool = Field(default=True)
     is_verified: bool = Field(default=False)
     created_at: datetime = Field(default_factory=utc_now)
@@ -42,4 +43,4 @@ class OAuthAccount(SQLModel, table=True):
     expires_at: datetime | None = Field(default=None)
     created_at: datetime = Field(default_factory=utc_now)
 
-    user: User | None = Relationship(back_populates="oauth_accounts")
+    user: Optional["User"] = Relationship(back_populates="oauth_accounts")
