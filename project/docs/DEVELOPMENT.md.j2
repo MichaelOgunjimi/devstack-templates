@@ -29,6 +29,9 @@ you can test those flows before configuring SMTP.
 {% if frontend == "nextjs" -%}
 The frontend starter pages live in `frontend/src/app/` and use the generated
 auth client in `frontend/src/lib/auth/`.
+{% elif frontend == "react" -%}
+The Vite starter app lives in `frontend/src/App.tsx` and uses the generated auth
+client in `frontend/src/lib/auth/`.
 {% endif %}
 
 ## Docker Workflow

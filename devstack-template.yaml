@@ -59,6 +59,46 @@ stacks:
         - from: frontend/app/admin/page.tsx
           to: src/app/admin/page.tsx
 
+  - id: fastapi-react
+    name: "FastAPI + React/Vite"
+    backend: fastapi
+    frontend: react
+    default_services:
+      - postgres
+      - redis
+    optional_features:
+      - minio
+      - mailhog
+      - elasticsearch
+      - websockets
+      - celery
+      - stripe
+      - email
+    required_tools:
+      - docker
+      - uv
+      - node
+    templates:
+      compose: docker-compose.yml.j2
+      backend: backend
+      frontend_shared: frontend/lib
+    project_outputs:
+      files:
+        - from: project/README.md.j2
+          to: README.md
+        - from: project/Makefile.j2
+          to: Makefile
+        - from: project/docs/DEVELOPMENT.md.j2
+          to: docs/DEVELOPMENT.md
+    frontend_outputs:
+      files:
+        - from: frontend/vite/App.tsx.j2
+          to: src/App.tsx
+        - from: frontend/vite/main.tsx
+          to: src/main.tsx
+        - from: frontend/vite/index.css
+          to: src/index.css
+
 services:
   - id: postgres
     name: "Postgres"
