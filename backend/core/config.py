@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
 
     # OAuth
     GOOGLE_CLIENT_ID: str = ""
@@ -76,6 +78,14 @@ class Settings(BaseSettings):
     @property
     def refresh_token_expire(self) -> timedelta:
         return timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    @property
+    def email_verification_token_expire(self) -> timedelta:
+        return timedelta(hours=self.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS)
+
+    @property
+    def password_reset_token_expire(self) -> timedelta:
+        return timedelta(minutes=self.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)
 
 
 @lru_cache

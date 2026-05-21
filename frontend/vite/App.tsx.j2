@@ -1,0 +1,527 @@
+import type { FormEvent, ReactNode } from "react";
+import { useEffect, useState } from "react";
+
+import { useAuth } from "./lib/auth";
+
+type Route =
+  | "/"
+  | "/login"
+  | "/register"
+  | "/forgot-password"
+  | "/reset-password"
+  | "/verify-email"
+  | "/dashboard"
+  | "/admin";
+
+function currentRoute(): Route {
+  const path = window.location.pathname;
+  if (
+    path === "/login" ||
+    path === "/register" ||
+    path === "/forgot-password" ||
+    path === "/reset-password" ||
+    path === "/verify-email" ||
+    path === "/dashboard" ||
+    path === "/admin"
+  ) {
+    return path;
+  }
+  return "/";
+}
+
+function LinkButton({
+  to,
+  children,
+  variant = "default",
+  onNavigate,
+}: {
+  to: Route;
+  children: ReactNode;
+  variant?: "default" | "primary" | "ghost";
+  onNavigate: (to: Route) => void;
+}) {
+  const className =
+    variant === "primary"
+      ? "button buttonPrimary"
+      : variant === "ghost"
+        ? "button buttonGhost"
+        : "button";
+
+  return (
+    <a
+      href={to}
+      className={className}
+      onClick={(event) => {
+        event.preventDefault();
+        onNavigate(to);
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+function Home({ navigate }: { navigate: (to: Route) => void }) {
+  return (
+    <main className="hero">
+      <section className="container">
+        <p className="eyebrow">DevStack starter</p>
+        <h1 className="heroTitle">{{ project_name }}</h1>
+        <p className="heroText">
+          Your generated Vite app includes a FastAPI backend, token auth, protected pages,
+          and a small dashboard baseline.
+        </p>
+        <div className="actions">
+          <LinkButton to="/register" variant="primary" onNavigate={navigate}>
+            Create account
+          </LinkButton>
+          <LinkButton to="/login" variant="ghost" onNavigate={navigate}>
+            Log in
+          </LinkButton>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function Login({ navigate }: { navigate: (to: Route) => void }) {
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setIsPending(true);
+    const result = await signIn({ email, password });
+    setIsPending(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    navigate("/dashboard");
+  }
+
+  return (
+    <main className="cardWrap">
+      <section className="card">
+        <h1>Log in</h1>
+        <p className="muted">Access your dashboard.</p>
+        <form className="form" onSubmit={handleSubmit}>
+          <label className="field">
+            Email
+            <input
+              className="input"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            Password
+            <input
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          {error ? <p className="error">{error}</p> : null}
+          <button className="button" type="submit" disabled={isPending}>
+            {isPending ? "Logging in..." : "Log in"}
+          </button>
+        </form>
+        <div className="actions">
+          <LinkButton to="/register" onNavigate={navigate}>
+            Create account
+          </LinkButton>
+          <LinkButton to="/forgot-password" onNavigate={navigate}>
+            Forgot password
+          </LinkButton>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function Register({ navigate }: { navigate: (to: Route) => void }) {
+  const { signUp } = useAuth();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setIsPending(true);
+    const result = await signUp({ email, password, fullName });
+    setIsPending(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    navigate("/dashboard");
+  }
+
+  return (
+    <main className="cardWrap">
+      <section className="card">
+        <h1>Create account</h1>
+        <p className="muted">Start with a user account.</p>
+        <form className="form" onSubmit={handleSubmit}>
+          <label className="field">
+            Full name
+            <input
+              className="input"
+              type="text"
+              autoComplete="name"
+              required
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            Email
+            <input
+              className="input"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            Password
+            <input
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          {error ? <p className="error">{error}</p> : null}
+          <button className="button" type="submit" disabled={isPending}>
+            {isPending ? "Creating..." : "Create account"}
+          </button>
+        </form>
+        <div className="actions">
+          <LinkButton to="/login" onNavigate={navigate}>
+            Log in
+          </LinkButton>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function ForgotPassword({ navigate }: { navigate: (to: Route) => void }) {
+  const { forgotPassword } = useAuth();
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage(null);
+    setError(null);
+    const result = await forgotPassword(email);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setMessage(result.message);
+  }
+
+  return (
+    <main className="cardWrap">
+      <section className="card">
+        <h1>Reset password</h1>
+        <p className="muted">Check backend logs for the local reset link.</p>
+        <form className="form" onSubmit={handleSubmit}>
+          <label className="field">
+            Email
+            <input
+              className="input"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          {message ? <p className="success">{message}</p> : null}
+          {error ? <p className="error">{error}</p> : null}
+          <button className="button" type="submit">
+            Send reset link
+          </button>
+        </form>
+        <div className="actions">
+          <LinkButton to="/login" onNavigate={navigate}>
+            Back to login
+          </LinkButton>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function ResetPassword({ navigate }: { navigate: (to: Route) => void }) {
+  const { resetPassword } = useAuth();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const token = new URLSearchParams(window.location.search).get("token");
+    setMessage(null);
+    setError(null);
+    if (!token) {
+      setError("Reset token is missing.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    const result = await resetPassword(token, password);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setMessage(result.message);
+    window.setTimeout(() => navigate("/login"), 1600);
+  }
+
+  return (
+    <main className="cardWrap">
+      <section className="card">
+        <h1>Set new password</h1>
+        <form className="form" onSubmit={handleSubmit}>
+          <label className="field">
+            New password
+            <input
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            Confirm password
+            <input
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+            />
+          </label>
+          {message ? <p className="success">{message}</p> : null}
+          {error ? <p className="error">{error}</p> : null}
+          <button className="button" type="submit">
+            Reset password
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function VerifyEmail({ navigate }: { navigate: (to: Route) => void }) {
+  const { verifyEmail } = useAuth();
+  const [message, setMessage] = useState("Verifying your email...");
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const token = new URLSearchParams(window.location.search).get("token");
+    if (!token) {
+      setMessage("Verification token is missing.");
+      setIsError(true);
+      return;
+    }
+    verifyEmail(token).then((result) => {
+      if (!active) return;
+      if (result.error) {
+        setMessage(result.error.message);
+        setIsError(true);
+        return;
+      }
+      setMessage(result.message);
+      setIsError(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [verifyEmail]);
+
+  return (
+    <main className="cardWrap">
+      <section className="card">
+        <h1>Email verification</h1>
+        <p className={isError ? "error" : "success"}>{message}</p>
+        <div className="actions">
+          <LinkButton to="/dashboard" onNavigate={navigate}>
+            Open dashboard
+          </LinkButton>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function Dashboard({ navigate }: { navigate: (to: Route) => void }) {
+  const { user, isLoading, signOut, resendVerification } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/login");
+    }
+  }, [isLoading, navigate, user]);
+
+  if (isLoading || !user) {
+    return <main className="cardWrap">Loading...</main>;
+  }
+
+  return (
+    <main className="page">
+      <header className="topbar">
+        <div className="topbarInner">
+          <strong>Dashboard</strong>
+          <button
+            className="button"
+            type="button"
+            onClick={() => {
+              void signOut().then(() => navigate("/login"));
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+      <section className="container" style={{ padding: "2.5rem 1.5rem" }}>
+        <div className="panel">
+          <p className="eyebrow">Signed in</p>
+          <h1>Welcome, {user.fullName ?? user.email}</h1>
+          <p className="muted">Replace these panels with your app workflow.</p>
+        </div>
+        <div className="grid">
+          <div className="panel">
+            <p className="muted">Role</p>
+            <h2>{user.role}</h2>
+          </div>
+          <div className="panel">
+            <p className="muted">Email</p>
+            <h2>{user.email}</h2>
+          </div>
+          <div className="panel">
+            <p className="muted">Verified</p>
+            <h2>{user.isVerified ? "Yes" : "No"}</h2>
+          </div>
+        </div>
+        {!user.isVerified ? (
+          <div className="panel" style={{ marginTop: "1.5rem", borderColor: "#fbbf24" }}>
+            <h2>Email verification pending</h2>
+            <p className="muted">In local development, the verification link is logged.</p>
+            <button className="button" type="button" onClick={() => resendVerification()}>
+              Send verification email
+            </button>
+          </div>
+        ) : null}
+      </section>
+    </main>
+  );
+}
+
+function Admin({ navigate }: { navigate: (to: Route) => void }) {
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/login");
+    }
+  }, [isLoading, navigate, user]);
+
+  if (isLoading || !user) {
+    return <main className="cardWrap">Loading...</main>;
+  }
+
+  if (user.role !== "admin") {
+    return (
+      <main className="cardWrap">
+        <section className="card">
+          <h1>Access denied</h1>
+          <p className="muted">This page requires the admin role.</p>
+          <div className="actions">
+            <LinkButton to="/dashboard" onNavigate={navigate}>
+              Back to dashboard
+            </LinkButton>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="page">
+      <header className="topbar">
+        <div className="topbarInner">
+          <strong>Admin</strong>
+          <LinkButton to="/dashboard" onNavigate={navigate}>
+            Dashboard
+          </LinkButton>
+        </div>
+      </header>
+      <section className="container" style={{ padding: "2.5rem 1.5rem" }}>
+        <div className="panel">
+          <p className="eyebrow">Admin area</p>
+          <h1>Starter admin dashboard</h1>
+          <p className="muted">Add user management, moderation, billing, or internal tools here.</p>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+export function App() {
+  const [route, setRoute] = useState<Route>(() => currentRoute());
+
+  function navigate(to: Route) {
+    window.history.pushState({}, "", to);
+    setRoute(to);
+  }
+
+  useEffect(() => {
+    const onPopState = () => setRoute(currentRoute());
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  if (route === "/login") return <Login navigate={navigate} />;
+  if (route === "/register") return <Register navigate={navigate} />;
+  if (route === "/forgot-password") return <ForgotPassword navigate={navigate} />;
+  if (route === "/reset-password") return <ResetPassword navigate={navigate} />;
+  if (route === "/verify-email") return <VerifyEmail navigate={navigate} />;
+  if (route === "/dashboard") return <Dashboard navigate={navigate} />;
+  if (route === "/admin") return <Admin navigate={navigate} />;
+  return <Home navigate={navigate} />;
+}

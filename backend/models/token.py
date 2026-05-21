@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -22,4 +22,4 @@ class RefreshToken(SQLModel, table=True):
     revoked: bool = Field(default=False)
     created_at: datetime = Field(default_factory=utc_now)
 
-    user: "User | None" = Relationship(back_populates="refresh_tokens")
+    user: Optional["User"] = Relationship(back_populates="refresh_tokens")

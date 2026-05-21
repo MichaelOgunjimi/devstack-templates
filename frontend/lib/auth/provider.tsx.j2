@@ -14,6 +14,7 @@ import type {
   AuthClientOptions,
   AuthResult,
   AuthState,
+  MessageResult,
   OAuthProvider,
   OAuthSignInOptions,
   Token,
@@ -37,6 +38,11 @@ export interface AuthContextValue extends AuthState {
   refresh: () => Promise<AuthResult>;
   getUser: () => Promise<UserResult>;
   updateUser: (data: UserUpdateData) => Promise<UserResult>;
+  forgotPassword: (email: string) => Promise<MessageResult>;
+  resetPassword: (token: string, newPassword: string) => Promise<MessageResult>;
+  verifyEmail: (token: string) => Promise<MessageResult>;
+  resendVerification: () => Promise<MessageResult>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<MessageResult>;
   client: AuthClient;
 }
 
@@ -199,6 +205,32 @@ export function AuthProvider({ children, options }: AuthProviderProps) {
     [client],
   );
 
+  const forgotPassword = useCallback(
+    async (email: string) => client.forgotPassword(email),
+    [client],
+  );
+
+  const resetPassword = useCallback(
+    async (token: string, newPassword: string) => client.resetPassword(token, newPassword),
+    [client],
+  );
+
+  const verifyEmail = useCallback(
+    async (token: string) => client.verifyEmail(token),
+    [client],
+  );
+
+  const resendVerification = useCallback(
+    async () => client.resendVerification(),
+    [client],
+  );
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) =>
+      client.changePassword(currentPassword, newPassword),
+    [client],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ...state,
@@ -210,6 +242,11 @@ export function AuthProvider({ children, options }: AuthProviderProps) {
       refresh,
       getUser,
       updateUser,
+      forgotPassword,
+      resetPassword,
+      verifyEmail,
+      resendVerification,
+      changePassword,
       client,
     }),
     [
@@ -221,6 +258,11 @@ export function AuthProvider({ children, options }: AuthProviderProps) {
       refresh,
       getUser,
       updateUser,
+      forgotPassword,
+      resetPassword,
+      verifyEmail,
+      resendVerification,
+      changePassword,
       client,
     ],
   );

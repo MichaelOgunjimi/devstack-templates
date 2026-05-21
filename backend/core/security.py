@@ -41,6 +41,20 @@ def create_refresh_token(data: dict) -> tuple[str, str]:
     return token, jti
 
 
+def create_verification_token(user_id: str) -> str:
+    """Create a signed token used to verify a user's email address."""
+    expire = utc_now() + settings.email_verification_token_expire
+    payload = {"sub": user_id, "exp": expire, "type": "verify_email"}
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_password_reset_token(user_id: str) -> str:
+    """Create a signed token used to reset a user's password."""
+    expire = utc_now() + settings.password_reset_token_expire
+    payload = {"sub": user_id, "exp": expire, "type": "password_reset"}
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
 def decode_token(token: str) -> dict:
     """Decode and verify a JWT.
 

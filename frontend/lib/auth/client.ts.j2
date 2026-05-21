@@ -4,6 +4,7 @@ import type {
   AuthChangeEvent,
   AuthClientOptions,
   AuthResult,
+  MessageResult,
   OAuthProvider,
   OAuthSignInOptions,
   Token,
@@ -38,13 +39,32 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
  * @returns Mapped User with camelCase properties
  */
 function mapUser(raw: Record<string, unknown>): User {
+  const rawRole = raw.role;
   return {
     id: raw.id as string,
     email: raw.email as string,
     fullName: (raw.full_name as string) ?? null,
+    role: rawRole === "admin" ? "admin" : "user",
     isActive: (raw.is_active as boolean) ?? true,
     isVerified: (raw.is_verified as boolean) ?? false,
     createdAt: raw.created_at as string,
+  };
+}
+
+async function messageResult(res: Response, fallback: string): Promise<MessageResult> {
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return {
+      message: null,
+      error: {
+        message: body.detail ?? fallback,
+        status: res.status,
+      },
+    };
+  }
+  return {
+    message: body.message ?? "Done",
+    error: null,
   };
 }
 
@@ -164,6 +184,7 @@ export class AuthClient {
         email: credentials.email,
         password: credentials.password,
         full_name: credentials.fullName,
+        role: credentials.role ?? "user",
       }),
     });
 
@@ -437,6 +458,66 @@ export class AuthClient {
     const user = mapUser(raw);
     this.emit("USER_UPDATED", this.getToken());
     return { user, error: null };
+  }
+
+  /**
+   * Request a password reset link for an email address.
+   */
+  async forgotPassword(email: string): Promise<MessageResult> {
+    const res = await this.fetch("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    return messageResult(res, "Failed to request password reset");
+  }
+
+  /**
+   * Reset a password using a token from the reset link.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<MessageResult> {
+    const res = await this.fetch("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password: newPassword }),
+    });
+    return messageResult(res, "Failed to reset password");
+  }
+
+  /**
+   * Verify an email address using a token from the verification link.
+   */
+  async verifyEmail(token: string): Promise<MessageResult> {
+    const res = await this.fetch("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+    return messageResult(res, "Failed to verify email");
+  }
+
+  /**
+   * Send another verification email to the current user.
+   */
+  async resendVerification(): Promise<MessageResult> {
+    const res = await this.authFetch("/auth/resend-verification", {
+      method: "POST",
+    });
+    return messageResult(res, "Failed to resend verification email");
+  }
+
+  /**
+   * Change the current user's password.
+   */
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<MessageResult> {
+    const res = await this.authFetch("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+    return messageResult(res, "Failed to change password");
   }
 
   // ── Events ─────────────────────────────────────────────────────────────

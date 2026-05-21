@@ -1,5 +1,6 @@
 """FastAPI dependency injection — database sessions, Redis, and auth."""
 
+import uuid
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
@@ -73,7 +74,16 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    result = await db.execute(select(User).where(col(User.id) == user_id))
+    try:
+        parsed_user_id = uuid.UUID(user_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    result = await db.execute(select(User).where(col(User.id) == parsed_user_id))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -99,9 +109,22 @@ async def get_current_active_user(
     return user
 
 
+async def get_current_admin_user(
+    user: Annotated[User, Depends(get_current_active_user)],
+) -> User:
+    """Return the current user only when they have the admin role."""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return user
+
+
 # ---------------------------------------------------------------------------
 # Named aliases — import these in route handlers instead of inline Annotated
 # ---------------------------------------------------------------------------
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
 CurrentActiveUserDep = Annotated[User, Depends(get_current_active_user)]
+AdminDep = Annotated[User, Depends(get_current_admin_user)]

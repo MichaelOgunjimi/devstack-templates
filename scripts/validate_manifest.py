@@ -80,37 +80,8 @@ def _validate_stacks(manifest: dict[str, Any], service_ids: set[str]) -> None:
             if value is not None:
                 _validate_existing_relative_path(value, f"stacks.{stack_id}.templates.{key}")
 
-        project_outputs = stack.get("project_outputs", {})
-        if project_outputs is None:
-            project_outputs = {}
-        if not isinstance(project_outputs, dict):
-            raise SystemExit(f"stacks.{stack_id}.project_outputs must be a mapping")
-        files = project_outputs.get("files", [])
-        if not isinstance(files, list):
-            raise SystemExit(f"stacks.{stack_id}.project_outputs.files must be a list")
-        for file_index, file_record in enumerate(files):
-            if not isinstance(file_record, dict):
-                raise SystemExit(
-                    f"stacks.{stack_id}.project_outputs.files[{file_index}] must be a mapping"
-                )
-            source = _required_str(
-                file_record,
-                "from",
-                f"stacks.{stack_id}.project_outputs.files[{file_index}].from",
-            )
-            destination = _required_str(
-                file_record,
-                "to",
-                f"stacks.{stack_id}.project_outputs.files[{file_index}].to",
-            )
-            _validate_existing_relative_path(
-                source,
-                f"stacks.{stack_id}.project_outputs.files[{file_index}].from",
-            )
-            _validate_relative_path(
-                destination,
-                f"stacks.{stack_id}.project_outputs.files[{file_index}].to",
-            )
+        _validate_output_files(stack, stack_id, "project_outputs")
+        _validate_output_files(stack, stack_id, "frontend_outputs")
 
 
 def _validate_services(manifest: dict[str, Any]) -> None:
@@ -129,6 +100,38 @@ def _validate_services(manifest: dict[str, Any]) -> None:
                 f"services.{service_id}.copy_files[{index}].from",
             )
             _validate_relative_path(destination, f"services.{service_id}.copy_files[{index}].to")
+
+
+def _validate_output_files(stack: dict[str, Any], stack_id: str, key: str) -> None:
+    outputs = stack.get(key, {})
+    if outputs is None:
+        outputs = {}
+    if not isinstance(outputs, dict):
+        raise SystemExit(f"stacks.{stack_id}.{key} must be a mapping")
+    files = outputs.get("files", [])
+    if not isinstance(files, list):
+        raise SystemExit(f"stacks.{stack_id}.{key}.files must be a list")
+    for file_index, file_record in enumerate(files):
+        if not isinstance(file_record, dict):
+            raise SystemExit(f"stacks.{stack_id}.{key}.files[{file_index}] must be a mapping")
+        source = _required_str(
+            file_record,
+            "from",
+            f"stacks.{stack_id}.{key}.files[{file_index}].from",
+        )
+        destination = _required_str(
+            file_record,
+            "to",
+            f"stacks.{stack_id}.{key}.files[{file_index}].to",
+        )
+        _validate_existing_relative_path(
+            source,
+            f"stacks.{stack_id}.{key}.files[{file_index}].from",
+        )
+        _validate_relative_path(
+            destination,
+            f"stacks.{stack_id}.{key}.files[{file_index}].to",
+        )
 
 
 def _required_str(record: dict[str, Any], key: str, field: str) -> str:

@@ -20,6 +20,20 @@ uv run ruff check .
 uv run pytest
 ```
 
+## Auth Development
+
+The backend ships with starter auth routes under `/api/v1/auth`. Password reset
+and email verification links are logged by the backend in local development, so
+you can test those flows before configuring SMTP.
+
+{% if frontend == "nextjs" -%}
+The frontend starter pages live in `frontend/src/app/` and use the generated
+auth client in `frontend/src/lib/auth/`.
+{% elif frontend == "react" -%}
+The Vite starter app lives in `frontend/src/App.tsx` and uses the generated auth
+client in `frontend/src/lib/auth/`.
+{% endif %}
+
 ## Docker Workflow
 
 Use the global DevStack command from the project root:
