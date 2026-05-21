@@ -11,13 +11,16 @@ import type { AuthClient } from "./auth/client";
  */
 
 export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public detail: string,
-    public body?: unknown,
-  ) {
+  status: number;
+  detail: string;
+  body?: unknown;
+
+  constructor(status: number, detail: string, body?: unknown) {
     super(detail);
     this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+    this.body = body;
   }
 }
 
