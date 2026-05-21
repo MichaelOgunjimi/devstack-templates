@@ -49,7 +49,13 @@ class ConnectionManager:
     async def send_personal(self, websocket: WebSocket, data: dict[str, Any]) -> None:
         await websocket.send_json(data)
 
-    async def broadcast(self, room: str, data: dict[str, Any], *, exclude: WebSocket | None = None) -> None:
+    async def broadcast(
+        self,
+        room: str,
+        data: dict[str, Any],
+        *,
+        exclude: WebSocket | None = None,
+    ) -> None:
         for connection in self._connections.get(room, []):
             if connection is not exclude:
                 try:

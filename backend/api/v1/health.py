@@ -12,6 +12,7 @@ logger = structlog.get_logger(__name__)
 async def _ping_postgres() -> dict:
     """Check PostgreSQL connectivity."""
     from sqlalchemy import text
+
     from core.database import async_engine
 
     start = time.monotonic()
@@ -57,6 +58,7 @@ async def _ping_minio() -> dict:
             secure=False,
         )
         import asyncio
+
         await asyncio.get_running_loop().run_in_executor(None, client.list_buckets)
         ms = round((time.monotonic() - start) * 1000, 1)
         return {"status": "ok", "latency_ms": ms}
@@ -73,6 +75,7 @@ async def _ping_elasticsearch() -> dict:
     start = time.monotonic()
     try:
         from elasticsearch import AsyncElasticsearch
+
         es = AsyncElasticsearch(settings.ELASTICSEARCH_URL, request_timeout=2)
         await es.ping()
         await es.close()
@@ -98,9 +101,7 @@ async def readiness_check() -> dict:
     checks["minio"] = await _ping_minio()
     checks["elasticsearch"] = await _ping_elasticsearch()
 
-    overall = all(
-        c["status"] in ("ok", "skipped") for c in checks.values()
-    )
+    overall = all(c["status"] in ("ok", "skipped") for c in checks.values())
     return {
         "status": "ok" if overall else "degraded",
         "version": "0.1.0",

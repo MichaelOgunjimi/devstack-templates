@@ -1,0 +1,29 @@
+# devstack-templates
+
+Official project templates for
+[devstack-cli](https://github.com/MichaelOgunjimi/devstack-cli).
+
+This repository contains the template manifest, backend starter code, frontend
+shared client libraries, Docker Compose templates, and generated project
+baseline files used by `devstack new`, `devstack add`, and `devstack update`.
+
+## Development
+
+Point the CLI at this checkout while working on templates:
+
+```bash
+export DEVSTACK_TEMPLATES_PATH="/path/to/devstack-templates"
+devstack templates list
+```
+
+Run checks locally:
+
+```bash
+uv run --with pyyaml python scripts/validate_manifest.py
+uv run --project backend ruff check .
+uv run --project backend pytest -q
+```
+
+Generated projects should receive stack-specific files through
+`project_outputs.files` in `devstack-template.yaml`, not through hardcoded CLI
+paths.

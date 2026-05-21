@@ -44,6 +44,11 @@ dependencies = [
 
     # Object storage
     "minio>=7.2",
+
+    # Optional integrations
+    "stripe>=10.0",
+    "aiosmtplib>=3.0",
+    "elasticsearch[async]>=8.13",
 ]
 
 [dependency-groups]

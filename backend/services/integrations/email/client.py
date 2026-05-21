@@ -106,7 +106,14 @@ class SMTPClient:
             logger.warning("email.smtp.disconnect.failed", error=str(disconnect_error))
 
     async def send_message(self, message: EmailMessage) -> None:
-        logger.info("email.smtp.send.attempt", recipients=message.get("To"), subject=message.get("Subject"))
+        logger.info(
+            "email.smtp.send.attempt",
+            recipients=message.get("To"),
+            subject=message.get("Subject"),
+        )
         await self._smtp.send_message(message)
-        logger.info("email.smtp.send.success", recipients=message.get("To"), subject=message.get("Subject"))
-
+        logger.info(
+            "email.smtp.send.success",
+            recipients=message.get("To"),
+            subject=message.get("Subject"),
+        )

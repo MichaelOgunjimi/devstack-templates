@@ -82,4 +82,3 @@ async def send_bulk(messages: list[EmailMessage]) -> dict[str, int]:
 
     logger.info("email.send_bulk.summary", sent=sent, failed=failed)
     return {"sent": sent, "failed": failed}
-

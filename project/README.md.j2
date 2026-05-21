@@ -1,0 +1,65 @@
+# {{ project_name }}
+
+Generated with DevStack using the `{{ stack }}` stack.
+
+## Quick Start
+
+```bash
+devstack up
+devstack status
+devstack logs
+```
+
+The project metadata lives in `.devstack.json`, so global `devstack` commands can
+detect this project when you run them from the project directory.
+
+## Services
+
+Selected infrastructure:
+
+{% for service in services -%}
+- `{{ service }}`
+{% endfor %}
+{% if optional %}
+
+Selected optional features:
+
+{% for feature in optional -%}
+- `{{ feature }}`
+{% endfor %}
+{% endif %}
+
+## Local URLs
+
+{% if frontend -%}
+- Frontend: http://localhost:{{ ports.frontend }}
+{% endif -%}
+- Backend API: http://localhost:{{ ports.backend }}
+- Health: http://localhost:{{ ports.backend }}/api/v1/health
+- Readiness: http://localhost:{{ ports.backend }}/api/v1/health/ready
+{% if "postgres" in services -%}
+- Postgres: localhost:{{ ports.postgres }}
+{% endif -%}
+{% if "redis" in services -%}
+- Redis: localhost:{{ ports.redis }}
+{% endif -%}
+{% if "mailhog" in services -%}
+- MailHog UI: http://localhost:{{ ports.mailhog_ui }}
+{% endif -%}
+{% if "minio" in services -%}
+- MinIO console: http://localhost:{{ ports.minio_console }}
+{% endif %}
+
+## Common Commands
+
+```bash
+make up          # start containers
+make down        # stop containers
+make rebuild     # rebuild containers
+make test        # run backend tests
+make lint        # run backend lint checks
+make migrate     # run database migrations
+```
+
+Backend environment variables are in `backend/.env`. Keep secrets out of git.
+
