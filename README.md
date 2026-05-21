@@ -7,6 +7,10 @@ This repository contains the template manifest, backend starter code, frontend
 shared client libraries, Docker Compose templates, and generated project
 baseline files used by `devstack new`, `devstack add`, and `devstack update`.
 
+The FastAPI + Next.js stack includes a starter auth baseline: register, login,
+refresh tokens, password reset, email verification, protected dashboard, and a
+minimal admin page using generic `user` and `admin` roles.
+
 ## Development
 
 Point the CLI at this checkout while working on templates:

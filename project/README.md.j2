@@ -63,3 +63,21 @@ make migrate     # run database migrations
 
 Backend environment variables are in `backend/.env`. Keep secrets out of git.
 
+## Starter Auth
+
+The FastAPI backend includes email/password auth, refresh tokens, email
+verification, password reset, and `user`/`admin` roles. In local development,
+verification and reset links are logged by the backend so the app works before
+you configure SMTP.
+
+{% if frontend == "nextjs" -%}
+The Next.js starter includes:
+
+- `/register`
+- `/login`
+- `/forgot-password`
+- `/reset-password`
+- `/verify-email`
+- `/dashboard`
+- `/admin`
+{% endif %}

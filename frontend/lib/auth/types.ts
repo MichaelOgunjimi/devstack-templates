@@ -5,6 +5,7 @@ export interface User {
   id: string;
   email: string;
   fullName: string | null;
+  role: "user" | "admin";
   isActive: boolean;
   isVerified: boolean;
   createdAt: string;
@@ -31,6 +32,7 @@ export interface SignUpCredentials {
   email: string;
   password: string;
   fullName: string;
+  role?: "user" | "admin";
 }
 
 /** Credentials required for email/password login. */
@@ -54,6 +56,21 @@ export interface UserUpdateData {
   fullName?: string;
   email?: string;
 }
+
+/** Successful message response returned by account action endpoints. */
+export interface MessageResponse {
+  message: string;
+  error: null;
+}
+
+/** Failed message response returned by account action endpoints. */
+export interface MessageErrorResponse {
+  message: null;
+  error: AuthError;
+}
+
+/** Discriminated union returned by password and verification actions. */
+export type MessageResult = MessageResponse | MessageErrorResponse;
 
 // ─── Responses ───────────────────────────────────────────────────────────────
 
