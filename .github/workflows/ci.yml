@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Template checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Validate template manifest
+        run: uv run --with pyyaml python scripts/validate_manifest.py
+
+      - name: Install backend dependencies
+        run: uv sync --project backend --dev
+
+      - name: Lint backend template
+        run: uv run --project backend ruff check .
+
+      - name: Compile backend template
+        run: uv run --project backend python -m compileall -q .
+
+      - name: Test backend template
+        run: uv run --project backend pytest -q
