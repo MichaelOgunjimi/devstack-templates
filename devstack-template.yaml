@@ -134,7 +134,7 @@ services:
     category: storage
     compose_profile: storage
     env:
-      MINIO_ENDPOINT: "localhost:{{ ports.minio }}"
+      MINIO_ENDPOINT: "minio:9000"
       MINIO_ACCESS_KEY: "devstack"
       MINIO_SECRET_KEY: "devstack123"
       MINIO_BUCKET: "{{ project_name }}"
