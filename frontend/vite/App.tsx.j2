@@ -61,23 +61,56 @@ function LinkButton({
   );
 }
 
+function ThemeToggle() {
+  function toggleTheme() {
+    const nextTheme = document.documentElement.classList.contains("dark") ? "light" : "dark";
+    window.localStorage.setItem("theme", nextTheme);
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+  }
+
+  return (
+    <button className="button buttonGhost" type="button" onClick={toggleTheme}>
+      Theme
+    </button>
+  );
+}
+
 function Home({ navigate }: { navigate: (to: Route) => void }) {
   return (
     <main className="hero">
-      <section className="container">
-        <p className="eyebrow">DevStack starter</p>
-        <h1 className="heroTitle">{{ project_name }}</h1>
-        <p className="heroText">
-          Your generated Vite app includes a FastAPI backend, token auth, protected pages,
-          and a small dashboard baseline.
-        </p>
-        <div className="actions">
-          <LinkButton to="/register" variant="primary" onNavigate={navigate}>
-            Create account
-          </LinkButton>
-          <LinkButton to="/login" variant="ghost" onNavigate={navigate}>
-            Log in
-          </LinkButton>
+      <section className="container heroGrid">
+        <div>
+          <p className="eyebrow">DevStack starter / production-shaped</p>
+          <h1 className="heroTitle">{{ project_name }} ships with the boring parts wired.</h1>
+          <p className="heroText">
+            FastAPI, React/Vite, token auth, protected views, admin checks, Docker Compose,
+            and a clean starter surface that is ready for your product workflow.
+          </p>
+          <div className="actions">
+            <LinkButton to="/register" variant="primary" onNavigate={navigate}>
+              Create account
+            </LinkButton>
+            <LinkButton to="/login" variant="ghost" onNavigate={navigate}>
+              Log in
+            </LinkButton>
+            <ThemeToggle />
+          </div>
+        </div>
+        <div>
+          <div className="panel stackPanel">
+            <p className="eyebrow">Generated stack</p>
+            <div className="stackList">
+              <div><span>Backend</span><strong>FastAPI service</strong></div>
+              <div><span>Frontend</span><strong>React/Vite</strong></div>
+              <div><span>Auth</span><strong>Email, reset, verify</strong></div>
+              <div><span>Access</span><strong>User and admin roles</strong></div>
+            </div>
+          </div>
+          <div className="badgeGrid">
+            <span>API</span>
+            <span>JWT</span>
+            <span>RBAC</span>
+          </div>
         </div>
       </section>
     </main>
@@ -504,6 +537,12 @@ function Admin({ navigate }: { navigate: (to: Route) => void }) {
 
 export function App() {
   const [route, setRoute] = useState<Route>(() => currentRoute());
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("theme");
+    const theme = stored === "light" || stored === "dark" ? stored : "dark";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, []);
 
   function navigate(to: Route) {
     window.history.pushState({}, "", to);

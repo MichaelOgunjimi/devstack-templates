@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth";
 
 export default function VerifyEmailPage() {
@@ -15,8 +16,11 @@ export default function VerifyEmailPage() {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     if (!token) {
-      setMessage("Verification token is missing.");
-      setIsError(true);
+      window.setTimeout(() => {
+        if (!active) return;
+        setMessage("Verification token is missing.");
+        setIsError(true);
+      }, 0);
       return;
     }
     verifyEmail(token).then((result) => {
@@ -35,19 +39,28 @@ export default function VerifyEmailPage() {
   }, [verifyEmail]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-12">
-      <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Email verification</h1>
-        <p className={`mt-4 text-sm font-medium ${isError ? "text-red-600" : "text-emerald-700"}`}>
-          {message}
-        </p>
-        <Link
-          href="/dashboard"
-          className="mt-8 inline-flex rounded-md bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          Open dashboard
-        </Link>
-      </section>
+    <main className="ds-page">
+      <div className="ds-shell">
+        <nav className="ds-nav">
+          <Link href="/" className="ds-mark">
+            DevStack
+          </Link>
+          <ThemeToggle />
+        </nav>
+
+        <section className="flex min-h-[calc(100vh-6rem)] items-center justify-center py-12">
+          <div className="ds-card w-full max-w-md p-8 text-center">
+            <p className="ds-eyebrow">Verification</p>
+            <h1 className="mt-3 text-3xl font-bold">Email verification</h1>
+            <p className={`mt-4 text-sm font-bold ${isError ? "text-red-500" : "text-emerald-500"}`}>
+              {message}
+            </p>
+            <Link href="/dashboard" className="ds-pill ds-pill-primary mt-8">
+              Open dashboard
+            </Link>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

@@ -42,6 +42,10 @@ stacks:
       files:
         - from: frontend/app/layout.tsx.j2
           to: src/app/layout.tsx
+        - from: frontend/app/globals.css
+          to: src/app/globals.css
+        - from: frontend/app/theme-toggle.tsx
+          to: src/components/theme-toggle.tsx
         - from: frontend/app/page.tsx.j2
           to: src/app/page.tsx
         - from: frontend/app/login/page.tsx
