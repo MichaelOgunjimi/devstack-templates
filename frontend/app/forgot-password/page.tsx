@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth";
 
 export default function ForgotPasswordPage() {
@@ -28,45 +29,50 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-12">
-      <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Reset password</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Enter your email and check the backend logs for the local reset link.
-        </p>
+    <main className="ds-page">
+      <div className="ds-shell">
+        <nav className="ds-nav">
+          <Link href="/" className="ds-mark">
+            DevStack
+          </Link>
+          <ThemeToggle />
+        </nav>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Email</span>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-950 outline-none focus:border-cyan-600"
-            />
-          </label>
+        <section className="flex min-h-[calc(100vh-6rem)] items-center justify-center py-12">
+          <div className="ds-card w-full max-w-md p-8">
+            <p className="ds-eyebrow">Recovery</p>
+            <h1 className="mt-3 text-3xl font-bold">Reset password</h1>
+            <p className="mt-2 text-sm opacity-75">
+              Enter your email and check the backend logs for the local reset link.
+            </p>
 
-          {message ? <p className="text-sm font-medium text-emerald-700">{message}</p> : null}
-          {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
+            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+              <label className="block">
+                <span className="text-sm font-bold">Email</span>
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="ds-field"
+                />
+              </label>
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full rounded-md bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
-          >
-            {isPending ? "Sending..." : "Send reset link"}
-          </button>
-        </form>
+              {message ? <p className="text-sm font-bold text-emerald-500">{message}</p> : null}
+              {error ? <p className="text-sm font-bold text-red-500">{error}</p> : null}
 
-        <Link
-          href="/login"
-          className="mt-6 inline-block text-sm font-medium text-cyan-700 hover:text-cyan-800"
-        >
-          Back to login
-        </Link>
-      </section>
+              <button type="submit" disabled={isPending} className="ds-pill ds-pill-primary w-full">
+                {isPending ? "Sending..." : "Send reset link"}
+              </button>
+            </form>
+
+            <Link href="/login" className="ds-link mt-6 inline-block text-sm">
+              Back to login
+            </Link>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
