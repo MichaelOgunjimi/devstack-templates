@@ -1,7 +1,9 @@
 from datetime import timedelta
 from functools import lru_cache
 
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
@@ -9,6 +11,20 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:5432/dbname"
+    DATABASE_ECHO: bool = False
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def SYNC_DATABASE_URL(self) -> str:  # noqa: N802
+        """Synchronous database URL for sync-only contexts."""
+        url = make_url(self.DATABASE_URL)
+        if url.drivername == "postgresql+asyncpg":
+            url = url.set(drivername="postgresql+psycopg")
+        elif url.drivername == "postgresql":
+            url = url.set(drivername="postgresql+psycopg")
+        elif url.drivername == "sqlite+aiosqlite":
+            url = url.set(drivername="sqlite")
+        return url.render_as_string(hide_password=False)
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

@@ -8,10 +8,10 @@ from core.config import settings
 
 logger = structlog.get_logger(__name__)
 
-# Engine created once at module load; echo only in non-production to avoid log noise.
+# Engine created once at module load.
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=not settings.is_production,
+    echo=settings.DATABASE_ECHO,
     pool_pre_ping=True,
 )
 
