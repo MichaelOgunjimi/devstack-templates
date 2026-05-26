@@ -25,6 +25,7 @@ Run checks locally:
 
 ```bash
 uv run --with pyyaml python scripts/validate_manifest.py
+uv run --with pyyaml --with jinja2 python scripts/smoke_generate_stacks.py
 uv run --project backend ruff check .
 uv run --project backend pytest -q
 ```

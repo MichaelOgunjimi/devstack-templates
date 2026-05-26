@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Local environments and generated lockfiles
+.venv/
+backend/.venv/
+backend/uv.lock
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
