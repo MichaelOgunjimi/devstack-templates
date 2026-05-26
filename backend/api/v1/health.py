@@ -13,11 +13,11 @@ async def _ping_postgres() -> dict:
     """Check PostgreSQL connectivity."""
     from sqlalchemy import text
 
-    from core.database import async_engine
+    from core.database import engine
 
     start = time.monotonic()
     try:
-        async with async_engine.connect() as conn:
+        async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         ms = round((time.monotonic() - start) * 1000, 1)
         return {"status": "ok", "latency_ms": ms}
