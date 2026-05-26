@@ -31,6 +31,9 @@ jobs:
       - name: Validate template manifest
         run: uv run --with pyyaml python scripts/validate_manifest.py
 
+      - name: Smoke-test generated stack structure
+        run: uv run --with pyyaml --with jinja2 python scripts/smoke_generate_stacks.py
+
       - name: Install backend dependencies
         run: uv sync --project backend --dev
 
