@@ -37,7 +37,7 @@ function LinkButton({
 }: {
   to: Route;
   children: ReactNode;
-  variant?: "default" | "primary" | "ghost" | "text";
+  variant?: "default" | "primary" | "ghost" | "text" | "quietText";
   onNavigate: (to: Route) => void;
 }) {
   const className =
@@ -45,6 +45,8 @@ function LinkButton({
       ? "button buttonPrimary"
       : variant === "text"
         ? "textButton"
+      : variant === "quietText"
+        ? "textButton textButtonQuiet"
       : variant === "ghost"
         ? "button buttonGhost"
         : "button";
@@ -330,10 +332,13 @@ function Login({ navigate }: { navigate: (to: Route) => void }) {
           </button>
         </form>
         <div className="formActions">
-          <LinkButton to="/register" variant="text" onNavigate={navigate}>
-            Create account
-          </LinkButton>
-          <LinkButton to="/forgot-password" variant="text" onNavigate={navigate}>
+          <p className="authPrompt">
+            New here?{" "}
+            <LinkButton to="/register" variant="text" onNavigate={navigate}>
+              Create account
+            </LinkButton>
+          </p>
+          <LinkButton to="/forgot-password" variant="quietText" onNavigate={navigate}>
             Forgot password
           </LinkButton>
         </div>
@@ -405,9 +410,12 @@ function Register({ navigate }: { navigate: (to: Route) => void }) {
           </button>
         </form>
         <div className="formActions">
-          <LinkButton to="/login" variant="text" onNavigate={navigate}>
-            Log in
-          </LinkButton>
+          <p className="authPrompt">
+            Already have an account?{" "}
+            <LinkButton to="/login" variant="text" onNavigate={navigate}>
+              Log in
+            </LinkButton>
+          </p>
         </div>
     </AuthShell>
   );
@@ -456,9 +464,12 @@ function ForgotPassword({ navigate }: { navigate: (to: Route) => void }) {
           </button>
         </form>
         <div className="formActions">
-          <LinkButton to="/login" variant="text" onNavigate={navigate}>
-            Back to login
-          </LinkButton>
+          <p className="authPrompt">
+            Remembered it?{" "}
+            <LinkButton to="/login" variant="text" onNavigate={navigate}>
+              Back to login
+            </LinkButton>
+          </p>
         </div>
     </AuthShell>
   );
