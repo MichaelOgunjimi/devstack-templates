@@ -336,6 +336,7 @@ a {
 
 .cardContentLight {
   align-content: start;
+  grid-template-rows: auto auto auto 1fr;
 }
 
 .cardContent h2 {
@@ -361,6 +362,10 @@ a {
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
   align-self: end;
+}
+
+.shortcuts {
+  margin-top: auto;
 }
 
 .worksList span,

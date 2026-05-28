@@ -299,6 +299,7 @@ a {
 
   .ds-card-content-light {
     align-content: start;
+    grid-template-rows: auto auto auto 1fr;
   }
 
   .ds-card-content h2 {
@@ -324,6 +325,10 @@ a {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
     align-self: end;
+  }
+
+  .ds-shortcuts {
+    margin-top: auto;
   }
 
   .ds-works-list span,
