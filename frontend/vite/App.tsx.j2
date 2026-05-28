@@ -62,6 +62,12 @@ function LinkButton({
 }
 
 function ThemeToggle() {
+  useEffect(() => {
+    const stored = window.localStorage.getItem("theme");
+    const theme = stored === "light" || stored === "dark" ? stored : "light";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, []);
+
   function toggleTheme() {
     const nextTheme = document.documentElement.classList.contains("dark") ? "light" : "dark";
     window.localStorage.setItem("theme", nextTheme);
@@ -70,47 +76,147 @@ function ThemeToggle() {
 
   return (
     <button className="button buttonGhost" type="button" onClick={toggleTheme}>
-      Theme
+      Mode
     </button>
   );
 }
 
 function Home({ navigate }: { navigate: (to: Route) => void }) {
+  const stackRows = [
+    ["API", "FastAPI"],
+    ["Data", "SQLAlchemy"],
+    ["UI", "React/Vite"],
+    ["Infra", "Docker"],
+  ];
+  const shortcuts = ["Dashboard", "Admin", "Auth"];
+  const authRows = [
+    ["Register", "ready"],
+    ["Login", "ready"],
+    ["Verify", "local"],
+    ["Reset", "local"],
+  ];
+
   return (
-    <main className="hero">
-      <section className="container heroGrid">
-        <div>
-          <p className="eyebrow">DevStack starter / production-shaped</p>
-          <h1 className="heroTitle">{{ project_name }} ships with the boring parts wired.</h1>
-          <p className="heroText">
-            FastAPI, React/Vite, token auth, protected views, admin checks, Docker Compose,
-            and a clean starter surface that is ready for your product workflow.
-          </p>
-          <div className="actions">
-            <LinkButton to="/register" variant="primary" onNavigate={navigate}>
-              Create account
-            </LinkButton>
+    <main className="page">
+      <div className="atmosphere" />
+      <section className="container landing">
+        <div className="topbarInline">
+          <a
+            href="/"
+            className="brand"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate("/");
+            }}
+          >
+            {{ project_name }}
+          </a>
+          <div className="topbarActions">
             <LinkButton to="/login" variant="ghost" onNavigate={navigate}>
               Log in
             </LinkButton>
             <ThemeToggle />
           </div>
         </div>
-        <div>
-          <div className="panel stackPanel">
-            <p className="eyebrow">Generated stack</p>
-            <div className="stackList">
-              <div><span>Backend</span><strong>FastAPI service</strong></div>
-              <div><span>Frontend</span><strong>React/Vite</strong></div>
-              <div><span>Auth</span><strong>Email, reset, verify</strong></div>
-              <div><span>Access</span><strong>User and admin roles</strong></div>
+
+        <div className="intro">
+          <p className="label">DevStack Starter</p>
+          <h1 className="displayTitle">{{ project_name }}</h1>
+          <p className="introCopy">
+            A generated product shell with auth, infrastructure, and protected
+            application surfaces already composed.
+          </p>
+        </div>
+
+        <div className="snapFlow" aria-label="Starter overview">
+          <article className="premiumCard premiumCardDark snapCard">
+            <div className="mediaLayer mediaProject" />
+            <div className="cardHeader">
+              <span>Generated</span>
+              <span>01</span>
             </div>
-          </div>
-          <div className="badgeGrid">
-            <span>API</span>
-            <span>JWT</span>
-            <span>RBAC</span>
-          </div>
+            <div className="cardContent">
+              <div>
+                <p className="cardKicker">Project Profile</p>
+                <h2>{{ project_name }}</h2>
+                <p>
+                  A full-stack workspace with service ports, environment files,
+                  local commands, and backend structure in place.
+                </p>
+              </div>
+              <div className="worksList">
+                <span>Backend</span>
+                <span>Frontend</span>
+                <span>Services</span>
+              </div>
+            </div>
+          </article>
+
+          <article className="premiumCard premiumCardLight snapCard centerCard">
+            <div className="cardHeader">
+              <span>Runtime</span>
+              <span>02</span>
+            </div>
+            <div className="cardContent cardContentLight">
+              <div>
+                <p className="cardKicker">Collection Insights</p>
+                <h2>Stack status</h2>
+              </div>
+              <div className="chart" aria-hidden="true">
+                <span className="chartBar1" />
+                <span className="chartBar2" />
+                <span className="chartBar3" />
+                <span className="chartActive chartBar4" />
+              </div>
+              <div className="dataList">
+                {stackRows.map(([label, value]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <div className="shortcuts">
+                {shortcuts.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+            </div>
+          </article>
+
+          <article className="premiumCard premiumCardDark snapCard">
+            <div className="mediaLayer mediaAuth" />
+            <div className="cardHeader">
+              <span>Access</span>
+              <span>03</span>
+            </div>
+            <div className="cardContent">
+              <div>
+                <p className="cardKicker">Auth Detail</p>
+                <h2>User and admin flow</h2>
+                <p>
+                  Starter screens cover account creation, sessions, local email
+                  verification, password recovery, and admin-only routes.
+                </p>
+              </div>
+              <div className="dataList dataListDark">
+                {authRows.map(([label, value]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <div className="actions">
+                <LinkButton to="/register" variant="primary" onNavigate={navigate}>
+                  Create account
+                </LinkButton>
+                <LinkButton to="/dashboard" variant="ghost" onNavigate={navigate}>
+                  Dashboard
+                </LinkButton>
+              </div>
+            </div>
+          </article>
         </div>
       </section>
     </main>
@@ -439,16 +545,31 @@ function Dashboard({ navigate }: { navigate: (to: Route) => void }) {
     <main className="page">
       <header className="topbar">
         <div className="topbarInner">
-          <strong>Dashboard</strong>
-          <button
-            className="button"
-            type="button"
-            onClick={() => {
-              void signOut().then(() => navigate("/login"));
+          <a
+            href="/dashboard"
+            className="brand"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate("/dashboard");
             }}
           >
-            Sign out
-          </button>
+            Dashboard
+          </a>
+          <div className="topbarActions">
+            <LinkButton to="/admin" variant="ghost" onNavigate={navigate}>
+              Admin
+            </LinkButton>
+            <button
+              className="button buttonGhost"
+              type="button"
+              onClick={() => {
+                void signOut().then(() => navigate("/login"));
+              }}
+            >
+              Sign out
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <section className="container content">
@@ -458,15 +579,15 @@ function Dashboard({ navigate }: { navigate: (to: Route) => void }) {
           <p className="muted">Replace these panels with your app workflow.</p>
         </div>
         <div className="grid">
-          <div className="panel">
+          <div className="stat">
             <p className="muted">Role</p>
             <h2>{user.role}</h2>
           </div>
-          <div className="panel">
+          <div className="stat">
             <p className="muted">Email</p>
             <h2>{user.email}</h2>
           </div>
-          <div className="panel">
+          <div className="stat">
             <p className="muted">Verified</p>
             <h2>{user.isVerified ? "Yes" : "No"}</h2>
           </div>
@@ -518,10 +639,22 @@ function Admin({ navigate }: { navigate: (to: Route) => void }) {
     <main className="page">
       <header className="topbar">
         <div className="topbarInner">
-          <strong>Admin</strong>
-          <LinkButton to="/dashboard" onNavigate={navigate}>
-            Dashboard
-          </LinkButton>
+          <a
+            href="/admin"
+            className="brand"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate("/admin");
+            }}
+          >
+            Admin
+          </a>
+          <div className="topbarActions">
+            <LinkButton to="/dashboard" variant="ghost" onNavigate={navigate}>
+              Dashboard
+            </LinkButton>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <section className="container content">
@@ -537,12 +670,6 @@ function Admin({ navigate }: { navigate: (to: Route) => void }) {
 
 export function App() {
   const [route, setRoute] = useState<Route>(() => currentRoute());
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("theme");
-    const theme = stored === "light" || stored === "dark" ? stored : "dark";
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, []);
 
   function navigate(to: Route) {
     window.history.pushState({}, "", to);

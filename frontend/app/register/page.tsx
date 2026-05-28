@@ -44,7 +44,7 @@ export default function RegisterPage() {
           <div className="ds-card w-full max-w-md p-8">
             <p className="ds-eyebrow">Identity</p>
             <h1 className="mt-3 text-3xl font-bold">Create account</h1>
-            <p className="mt-2 text-sm opacity-75">Start with a user account.</p>
+            <p className="mt-2 text-sm text-[var(--ds-muted)]">Start with a user account.</p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <label className="block">
@@ -84,14 +84,14 @@ export default function RegisterPage() {
                 />
               </label>
 
-              {error ? <p className="text-sm font-bold text-red-500">{error}</p> : null}
+              {error ? <p className="text-sm font-bold ds-error">{error}</p> : null}
 
               <button type="submit" disabled={isPending} className="ds-pill ds-pill-primary w-full">
                 {isPending ? "Creating..." : "Create account"}
               </button>
             </form>
 
-            <p className="mt-6 text-sm opacity-75">
+            <p className="mt-6 text-sm text-[var(--ds-muted)]">
               Already have an account?{" "}
               <Link href="/login" className="ds-link">
                 Log in

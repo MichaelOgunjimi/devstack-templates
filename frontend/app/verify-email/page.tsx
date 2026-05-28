@@ -52,7 +52,7 @@ export default function VerifyEmailPage() {
           <div className="ds-card w-full max-w-md p-8 text-center">
             <p className="ds-eyebrow">Verification</p>
             <h1 className="mt-3 text-3xl font-bold">Email verification</h1>
-            <p className={`mt-4 text-sm font-bold ${isError ? "text-red-500" : "text-emerald-500"}`}>
+            <p className={`mt-4 text-sm font-bold ${isError ? "text-[var(--ds-danger)]" : "text-[var(--ds-success)]"}`}>
               {message}
             </p>
             <Link href="/dashboard" className="ds-pill ds-pill-primary mt-8">

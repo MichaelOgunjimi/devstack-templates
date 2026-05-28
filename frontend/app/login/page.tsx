@@ -48,7 +48,7 @@ export default function LoginPage() {
           <div className="ds-card w-full max-w-md p-8">
             <p className="ds-eyebrow">Session</p>
             <h1 className="mt-3 text-3xl font-bold">Log in</h1>
-            <p className="mt-2 text-sm opacity-75">Access your dashboard.</p>
+            <p className="mt-2 text-sm text-[var(--ds-muted)]">Access your dashboard.</p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <label className="block">
@@ -75,7 +75,7 @@ export default function LoginPage() {
                 />
               </label>
 
-              {error ? <p className="text-sm font-bold text-red-500">{error}</p> : null}
+              {error ? <p className="text-sm font-bold ds-error">{error}</p> : null}
 
               <button type="submit" disabled={isPending} className="ds-pill ds-pill-primary w-full">
                 {isPending ? "Logging in..." : "Log in"}
@@ -86,7 +86,7 @@ export default function LoginPage() {
               <Link href="/register" className="ds-link">
                 Create account
               </Link>
-              <Link href="/forgot-password" className="opacity-75 hover:opacity-100">
+              <Link href="/forgot-password" className="text-[var(--ds-muted)] hover:text-[var(--ds-accent)]">
                 Forgot password?
               </Link>
             </div>

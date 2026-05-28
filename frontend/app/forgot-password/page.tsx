@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
           <div className="ds-card w-full max-w-md p-8">
             <p className="ds-eyebrow">Recovery</p>
             <h1 className="mt-3 text-3xl font-bold">Reset password</h1>
-            <p className="mt-2 text-sm opacity-75">
+            <p className="mt-2 text-sm text-[var(--ds-muted)]">
               Enter your email and check the backend logs for the local reset link.
             </p>
 
@@ -59,8 +59,8 @@ export default function ForgotPasswordPage() {
                 />
               </label>
 
-              {message ? <p className="text-sm font-bold text-emerald-500">{message}</p> : null}
-              {error ? <p className="text-sm font-bold text-red-500">{error}</p> : null}
+              {message ? <p className="text-sm font-bold ds-success">{message}</p> : null}
+              {error ? <p className="text-sm font-bold ds-error">{error}</p> : null}
 
               <button type="submit" disabled={isPending} className="ds-pill ds-pill-primary w-full">
                 {isPending ? "Sending..." : "Send reset link"}

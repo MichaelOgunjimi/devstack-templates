@@ -2,22 +2,32 @@ import Link from "next/link";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
-const stackItems = [
-  ["Backend", "FastAPI service"],
-  ["Frontend", "Next.js app router"],
-  ["Auth", "Email, reset, verify"],
-  ["Access", "User and admin roles"],
+const stackRows = [
+  ["API", "FastAPI"],
+  ["Data", "SQLAlchemy"],
+  ["UI", "Next.js"],
+  ["Infra", "Docker"],
+];
+
+const shortcuts = ["Dashboard", "Admin", "Auth"];
+
+const authRows = [
+  ["Register", "ready"],
+  ["Login", "ready"],
+  ["Verify", "local"],
+  ["Reset", "local"],
 ];
 
 export default function HomePage() {
   return (
     <main className="ds-page">
+      <div className="ds-atmosphere" />
       <div className="ds-shell">
         <nav className="ds-nav">
           <Link href="/" className="ds-mark">
             {{ project_name }}
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="ds-nav-actions">
             <Link href="/login" className="ds-pill ds-pill-outline">
               Log in
             </Link>
@@ -25,52 +35,105 @@ export default function HomePage() {
           </div>
         </nav>
 
-        <section className="grid min-h-[calc(100vh-6rem)] items-center gap-10 py-16 lg:grid-cols-[1.15fr_0.85fr]">
-          <div>
-            <p className="ds-eyebrow">DevStack starter / production-shaped</p>
-            <h1 className="mt-5 max-w-4xl text-5xl font-bold leading-none sm:text-7xl">
-              {{ project_name }} ships with the boring parts already wired.
-            </h1>
-            <p className="ds-muted mt-6 max-w-2xl text-lg leading-8">
-              FastAPI, Next.js, token auth, protected routes, admin checks, Docker
-              Compose, and a clean starter surface that is ready to replace with
-              your product workflow.
+        <section className="ds-landing">
+          <div className="ds-intro">
+            <p className="ds-label">DevStack Starter</p>
+            <h1 className="ds-display">{{ project_name }}</h1>
+            <p className="ds-copy">
+              A generated product shell with auth, infrastructure, and protected
+              application surfaces already composed.
             </p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Link href="/register" className="ds-pill ds-pill-primary">
-                Create account
-              </Link>
-              <Link href="/dashboard" className="ds-pill ds-pill-outline">
-                Open dashboard
-              </Link>
-            </div>
           </div>
 
-          <div>
-            <div className="ds-card p-5">
-              <p className="ds-eyebrow">Generated stack</p>
-              <div className="mt-6 space-y-4">
-                {stackItems.map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between border-b border-[var(--ds-hairline)] pb-4 last:border-0 last:pb-0"
-                  >
-                    <span className="text-sm opacity-70">{label}</span>
-                    <span className="text-sm font-bold">{value}</span>
-                  </div>
-                ))}
+          <div className="ds-snap-flow" aria-label="Starter overview">
+            <article className="ds-premium-card ds-premium-card-dark ds-snap-card">
+              <div className="ds-media-layer ds-media-project" />
+              <div className="ds-card-header">
+                <span>Generated</span>
+                <span>01</span>
               </div>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {["API", "JWT", "RBAC"].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-lg border border-[var(--ds-hairline)] bg-[var(--ds-surface-strong)] px-3 py-2 text-center text-sm font-bold text-[var(--ds-ink)]"
-                >
-                  {item}
+              <div className="ds-card-content">
+                <div>
+                  <p className="ds-card-kicker">Project Profile</p>
+                  <h2>{{ project_name }}</h2>
+                  <p>
+                    A full-stack workspace with service ports, environment files,
+                    local commands, and backend structure in place.
+                  </p>
                 </div>
-              ))}
-            </div>
+                <div className="ds-works-list">
+                  <span>Backend</span>
+                  <span>Frontend</span>
+                  <span>Services</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="ds-premium-card ds-premium-card-light ds-snap-card ds-center-card">
+              <div className="ds-card-header">
+                <span>Runtime</span>
+                <span>02</span>
+              </div>
+              <div className="ds-card-content ds-card-content-light">
+                <div>
+                  <p className="ds-card-kicker">Collection Insights</p>
+                  <h2>Stack status</h2>
+                </div>
+                <div className="ds-chart" aria-hidden="true">
+                  <span className="ds-chart-bar-1" />
+                  <span className="ds-chart-bar-2" />
+                  <span className="ds-chart-bar-3" />
+                  <span className="ds-chart-active ds-chart-bar-4" />
+                </div>
+                <div className="ds-data-list">
+                  {stackRows.map(([label, value]) => (
+                    <div key={label}>
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="ds-shortcuts">
+                  {shortcuts.map((item) => (
+                    <span key={item}>{item}</span>
+                  ))}
+                </div>
+              </div>
+            </article>
+
+            <article className="ds-premium-card ds-premium-card-dark ds-snap-card">
+              <div className="ds-media-layer ds-media-auth" />
+              <div className="ds-card-header">
+                <span>Access</span>
+                <span>03</span>
+              </div>
+              <div className="ds-card-content">
+                <div>
+                  <p className="ds-card-kicker">Auth Detail</p>
+                  <h2>User and admin flow</h2>
+                  <p>
+                    Starter screens cover account creation, sessions, local email
+                    verification, password recovery, and admin-only routes.
+                  </p>
+                </div>
+                <div className="ds-data-list ds-data-list-dark">
+                  {authRows.map(([label, value]) => (
+                    <div key={label}>
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="ds-card-actions">
+                  <Link href="/register" className="ds-pill ds-pill-primary">
+                    Create account
+                  </Link>
+                  <Link href="/dashboard" className="ds-pill ds-pill-outline ds-pill-on-dark">
+                    Dashboard
+                  </Link>
+                </div>
+              </div>
+            </article>
           </div>
         </section>
       </div>
