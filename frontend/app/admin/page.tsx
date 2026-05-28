@@ -31,7 +31,7 @@ export default function AdminPage() {
         <section className="ds-card w-full max-w-md p-8 text-center">
           <p className="ds-eyebrow">Restricted</p>
           <h1 className="mt-3 text-3xl font-bold">Access denied</h1>
-          <p className="mt-3 text-sm opacity-75">This page requires the admin role.</p>
+          <p className="mt-3 text-sm text-[var(--ds-muted)]">This page requires the admin role.</p>
           <Link href="/dashboard" className="ds-pill ds-pill-primary mt-8">
             Back to dashboard
           </Link>
@@ -47,7 +47,7 @@ export default function AdminPage() {
           <Link href="/admin" className="ds-mark">
             Admin
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="ds-nav-actions">
             <Link href="/dashboard" className="ds-pill ds-pill-outline">
               Dashboard
             </Link>
@@ -56,10 +56,10 @@ export default function AdminPage() {
         </header>
 
         <section className="py-10">
-          <div className="ds-card p-6">
+          <div className="ds-panel p-6">
             <p className="ds-eyebrow">Admin area</p>
             <h1 className="mt-3 text-4xl font-bold leading-tight">Starter admin dashboard</h1>
-            <p className="mt-3 text-sm opacity-75">
+            <p className="mt-3 text-sm text-[var(--ds-muted)]">
               Add user management, moderation, billing, or internal tools here.
             </p>
           </div>

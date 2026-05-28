@@ -9,7 +9,7 @@ function applyTheme(theme: "light" | "dark") {
 export function ThemeToggle() {
   useEffect(() => {
     const stored = window.localStorage.getItem("theme");
-    const theme = stored === "light" || stored === "dark" ? stored : "dark";
+    const theme = stored === "light" || stored === "dark" ? stored : "light";
     applyTheme(theme);
   }, []);
 

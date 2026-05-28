@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
           <div className="ds-card w-full max-w-md p-8">
             <p className="ds-eyebrow">Credentials</p>
             <h1 className="mt-3 text-3xl font-bold">Set new password</h1>
-            <p className="mt-2 text-sm opacity-75">Choose a new password for your account.</p>
+            <p className="mt-2 text-sm text-[var(--ds-muted)]">Choose a new password for your account.</p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <label className="block">
@@ -85,8 +85,8 @@ export default function ResetPasswordPage() {
                 />
               </label>
 
-              {message ? <p className="text-sm font-bold text-emerald-500">{message}</p> : null}
-              {error ? <p className="text-sm font-bold text-red-500">{error}</p> : null}
+              {message ? <p className="text-sm font-bold ds-success">{message}</p> : null}
+              {error ? <p className="text-sm font-bold ds-error">{error}</p> : null}
 
               <button type="submit" disabled={isPending} className="ds-pill ds-pill-primary w-full">
                 {isPending ? "Saving..." : "Reset password"}

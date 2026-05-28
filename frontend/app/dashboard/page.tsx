@@ -32,7 +32,7 @@ export default function DashboardPage() {
           <Link href="/dashboard" className="ds-mark">
             Dashboard
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="ds-nav-actions">
             <Link href="/admin" className="ds-pill ds-pill-outline">
               Admin
             </Link>
@@ -55,22 +55,22 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            <div className="ds-card p-5">
+            <div className="ds-stat">
               <p className="ds-eyebrow">Role</p>
-              <p className="mt-3 text-2xl font-bold">{user.role}</p>
+              <p className="text-2xl font-black">{user.role}</p>
             </div>
-            <div className="ds-card p-5">
+            <div className="ds-stat">
               <p className="ds-eyebrow">Email</p>
-              <p className="mt-3 truncate text-2xl font-bold">{user.email}</p>
+              <p className="truncate text-2xl font-black">{user.email}</p>
             </div>
-            <div className="ds-card p-5">
+            <div className="ds-stat">
               <p className="ds-eyebrow">Verified</p>
-              <p className="mt-3 text-2xl font-bold">{user.isVerified ? "Yes" : "No"}</p>
+              <p className="text-2xl font-black">{user.isVerified ? "Yes" : "No"}</p>
             </div>
           </div>
 
           {!user.isVerified ? (
-            <div className="ds-card-dark mt-6 p-5">
+            <div className="ds-panel mt-6 p-5">
               <p className="text-sm font-bold">Email verification pending</p>
               <p className="ds-muted mt-1 text-sm">
                 In local development, the verification link is logged by the backend.
