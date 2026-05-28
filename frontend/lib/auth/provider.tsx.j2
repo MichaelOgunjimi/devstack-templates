@@ -139,7 +139,23 @@ export function AuthProvider({ children, options }: AuthProviderProps) {
       },
     );
 
-    client.waitForInit();
+    client.waitForInit().then(async () => {
+      if (!mounted) return;
+
+      const token = client.getToken();
+      if (!token) {
+        setState({ token: null, user: null, isLoading: false });
+        return;
+      }
+
+      const result = await client.getUser();
+      if (!mounted) return;
+      setState({
+        token,
+        user: result.user,
+        isLoading: false,
+      });
+    });
 
     return () => {
       mounted = false;
