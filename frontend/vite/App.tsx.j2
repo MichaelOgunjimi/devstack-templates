@@ -37,12 +37,14 @@ function LinkButton({
 }: {
   to: Route;
   children: ReactNode;
-  variant?: "default" | "primary" | "ghost";
+  variant?: "default" | "primary" | "ghost" | "text";
   onNavigate: (to: Route) => void;
 }) {
   const className =
     variant === "primary"
       ? "button buttonPrimary"
+      : variant === "text"
+        ? "textButton"
       : variant === "ghost"
         ? "button buttonGhost"
         : "button";
@@ -58,6 +60,48 @@ function LinkButton({
     >
       {children}
     </a>
+  );
+}
+
+function AuthShell({
+  kicker,
+  title,
+  subtitle,
+  children,
+}: {
+  kicker: string;
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}) {
+  return (
+    <main className="authPage">
+      <div className="atmosphere" />
+      <ThemeToggle />
+      <section className="authShell">
+        <aside className="authContext" aria-hidden="true">
+          <div className="authContextTop">
+            <span>DevStack Access</span>
+            <span>Auth</span>
+          </div>
+          <div className="authContextBody">
+            <p className="cardKicker">Starter layer</p>
+            <h2>User sessions, local email, and admin routes.</h2>
+            <div className="authSignals">
+              <span>JWT</span>
+              <span>Verify</span>
+              <span>Reset</span>
+            </div>
+          </div>
+        </aside>
+        <section className="authPanel">
+          <p className="label">{kicker}</p>
+          <h1>{title}</h1>
+          <p className="authSubtitle">{subtitle}</p>
+          {children}
+        </section>
+      </section>
+    </main>
   );
 }
 
@@ -256,11 +300,7 @@ function Login({ navigate }: { navigate: (to: Route) => void }) {
   }
 
   return (
-    <main className="cardWrap">
-      <ThemeToggle />
-      <section className="card">
-        <h1>Log in</h1>
-        <p className="muted">Access your dashboard.</p>
+    <AuthShell kicker="Session" title="Log in" subtitle="Access your dashboard.">
         <form className="form" onSubmit={handleSubmit}>
           <label className="field">
             Email
@@ -290,15 +330,14 @@ function Login({ navigate }: { navigate: (to: Route) => void }) {
           </button>
         </form>
         <div className="formActions">
-          <LinkButton to="/register" onNavigate={navigate}>
+          <LinkButton to="/register" variant="text" onNavigate={navigate}>
             Create account
           </LinkButton>
-          <LinkButton to="/forgot-password" onNavigate={navigate}>
+          <LinkButton to="/forgot-password" variant="text" onNavigate={navigate}>
             Forgot password
           </LinkButton>
         </div>
-      </section>
-    </main>
+    </AuthShell>
   );
 }
 
@@ -324,11 +363,7 @@ function Register({ navigate }: { navigate: (to: Route) => void }) {
   }
 
   return (
-    <main className="cardWrap">
-      <ThemeToggle />
-      <section className="card">
-        <h1>Create account</h1>
-        <p className="muted">Start with a user account.</p>
+    <AuthShell kicker="Identity" title="Create account" subtitle="Start with a user account.">
         <form className="form" onSubmit={handleSubmit}>
           <label className="field">
             Full name
@@ -370,12 +405,11 @@ function Register({ navigate }: { navigate: (to: Route) => void }) {
           </button>
         </form>
         <div className="formActions">
-          <LinkButton to="/login" onNavigate={navigate}>
+          <LinkButton to="/login" variant="text" onNavigate={navigate}>
             Log in
           </LinkButton>
         </div>
-      </section>
-    </main>
+    </AuthShell>
   );
 }
 
@@ -398,11 +432,11 @@ function ForgotPassword({ navigate }: { navigate: (to: Route) => void }) {
   }
 
   return (
-    <main className="cardWrap">
-      <ThemeToggle />
-      <section className="card">
-        <h1>Reset password</h1>
-        <p className="muted">Check backend logs for the local reset link.</p>
+    <AuthShell
+      kicker="Recovery"
+      title="Reset password"
+      subtitle="Check backend logs for the local reset link."
+    >
         <form className="form" onSubmit={handleSubmit}>
           <label className="field">
             Email
@@ -422,12 +456,11 @@ function ForgotPassword({ navigate }: { navigate: (to: Route) => void }) {
           </button>
         </form>
         <div className="formActions">
-          <LinkButton to="/login" onNavigate={navigate}>
+          <LinkButton to="/login" variant="text" onNavigate={navigate}>
             Back to login
           </LinkButton>
         </div>
-      </section>
-    </main>
+    </AuthShell>
   );
 }
 
@@ -461,10 +494,7 @@ function ResetPassword({ navigate }: { navigate: (to: Route) => void }) {
   }
 
   return (
-    <main className="cardWrap">
-      <ThemeToggle />
-      <section className="card">
-        <h1>Set new password</h1>
+    <AuthShell kicker="Recovery" title="Set new password" subtitle="Choose a new password.">
         <form className="form" onSubmit={handleSubmit}>
           <label className="field">
             New password
@@ -496,8 +526,7 @@ function ResetPassword({ navigate }: { navigate: (to: Route) => void }) {
             Reset password
           </button>
         </form>
-      </section>
-    </main>
+    </AuthShell>
   );
 }
 

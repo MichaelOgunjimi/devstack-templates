@@ -153,16 +153,10 @@ a {
 }
 
 .formActions {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-top: 1rem;
-}
-
-@media (min-width: 420px) {
-  .formActions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .brand {
@@ -330,7 +324,7 @@ a {
 }
 
 .cardContentLight {
-  align-content: stretch;
+  align-content: start;
 }
 
 .cardContent h2 {
@@ -355,10 +349,14 @@ a {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
+  align-self: end;
 }
 
 .worksList span,
 .shortcuts span {
+  display: grid;
+  min-height: 2.5rem;
+  place-items: center;
   border: 1px solid currentColor;
   border-radius: 8px;
   padding: 0.625rem 0.5rem;
@@ -551,6 +549,125 @@ a {
   padding: 5rem 1rem 2rem;
 }
 
+.authPage {
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow-x: hidden;
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 5rem 1rem 2rem;
+}
+
+.authShell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(58rem, 100%);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.authContext {
+  position: relative;
+  display: none;
+  min-height: 100%;
+  overflow: hidden;
+  background:
+    linear-gradient(to bottom, rgba(24, 28, 25, 0.08), rgba(24, 28, 25, 0.95) 58%),
+    repeating-linear-gradient(135deg, rgba(225, 229, 223, 0.08) 0 1px, transparent 1px 18px),
+    var(--surface-dark);
+  color: var(--ink-inverse);
+}
+
+:root.dark .authContext {
+  color: var(--ink);
+}
+
+.authContextTop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  font-size: 0.6875rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.authContextBody {
+  display: grid;
+  align-content: end;
+  gap: 1.5rem;
+  min-height: 100%;
+  padding: 4rem 1.5rem 1.5rem;
+}
+
+.authContext h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.authSignals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.authSignals span {
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  padding: 0.625rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  opacity: 0.72;
+  text-align: center;
+}
+
+.authPanel {
+  padding: 2rem;
+}
+
+.authPanel h1 {
+  margin: 0.5rem 0 0;
+  color: var(--ink-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.5rem;
+  font-weight: 500;
+  line-height: 1.04;
+}
+
+.authSubtitle {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+@media (min-width: 760px) {
+  .authShell {
+    grid-template-columns: minmax(18rem, 0.9fr) minmax(24rem, 1.1fr);
+  }
+
+  .authContext {
+    display: block;
+  }
+
+  .authPanel {
+    padding: 3rem;
+  }
+}
+
 .card,
 .panel,
 .stat {
@@ -633,6 +750,12 @@ a {
   text-decoration: none;
 }
 
+.buttonPrimary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--ink-inverse);
+}
+
 .buttonFull {
   width: 100%;
 }
@@ -660,6 +783,19 @@ a {
   border-color: var(--accent);
   background: var(--surface);
   color: var(--accent);
+}
+
+.textButton {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-strong);
+  font-size: 0.9rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.textButton:hover {
+  color: var(--cool-strong);
 }
 
 .iconButton {

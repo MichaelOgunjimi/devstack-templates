@@ -298,7 +298,7 @@ a {
   }
 
   .ds-card-content-light {
-    align-content: stretch;
+    align-content: start;
   }
 
   .ds-card-content h2 {
@@ -323,10 +323,14 @@ a {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
+    align-self: end;
   }
 
   .ds-works-list span,
   .ds-shortcuts span {
+    display: grid;
+    min-height: 2.5rem;
+    place-items: center;
     border: 1px solid currentColor;
     border-radius: 8px;
     padding: 0.625rem 0.5rem;
