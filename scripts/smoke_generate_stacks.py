@@ -38,6 +38,27 @@ BACKEND_REQUIRED_FILES = (
     "migrations/env.py",
 )
 
+FRONTEND_REQUIRED_CONTENT = {
+    "fastapi-next": {
+        "src/components/auth-shell.tsx": ("AuthShell", "DevStack Access"),
+        "src/components/theme-toggle.tsx": ("Toggle color mode", "theme-sun"),
+        "src/app/login/page.tsx": ("safeReturnTo", "returnTo"),
+        "src/app/register/page.tsx": ("Create account", "AuthShell"),
+        "src/app/dashboard/page.tsx": ("returnTo=/dashboard", "resendVerification"),
+        "src/app/admin/page.tsx": ("returnTo=/admin", "Access denied"),
+    },
+    "fastapi-react": {
+        "src/App.tsx": (
+            "function safeReturnTo",
+            "?returnTo=/dashboard",
+            "?returnTo=/admin",
+            "function Dashboard",
+            "function Admin",
+        ),
+        "src/index.css": ("authShell", "sessionCard", "cardContent > .actions"),
+    },
+}
+
 IGNORED_COPY_DIRS = (
     ".mypy_cache",
     ".pytest_cache",
@@ -230,6 +251,8 @@ def _assert_stack_shape(
     for item in _manifest_files(stack, "frontend_outputs"):
         _assert_exists(project_path / "frontend" / item["to"], f"{stack_id} frontend output")
 
+    _assert_frontend_required_content(stack_id, project_path)
+
     for service_id in selected_services:
         for item in _service_copy_files(service_id, services_by_id):
             _assert_exists(project_path / item["to"], f"{stack_id} service output {service_id}")
@@ -314,6 +337,16 @@ def _assert_exists(path: Path, label: str) -> None:
 def _assert_rendered(content: str, source: str) -> None:
     if "{{" in content or "{%" in content or "{#" in content:
         raise SystemExit(f"{source} rendered with unresolved Jinja syntax")
+
+
+def _assert_frontend_required_content(stack_id: str, project_path: Path) -> None:
+    for relative_path, expected_values in FRONTEND_REQUIRED_CONTENT.get(stack_id, {}).items():
+        path = project_path / "frontend" / relative_path
+        _assert_exists(path, f"{stack_id} frontend starter surface")
+        content = path.read_text()
+        for expected in expected_values:
+            if expected not in content:
+                raise SystemExit(f"{path} is missing expected starter content: {expected}")
 
 
 def _file_record(value: Any, field: str) -> dict[str, str]:

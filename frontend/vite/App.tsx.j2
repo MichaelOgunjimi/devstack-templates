@@ -13,6 +13,8 @@ type Route =
   | "/dashboard"
   | "/admin";
 
+type Navigate = (to: Route, search?: string) => void;
+
 function currentRoute(): Route {
   const path = window.location.pathname;
   if (
@@ -29,6 +31,20 @@ function currentRoute(): Route {
   return "/";
 }
 
+function safeReturnTo(value: string | null): Route {
+  if (
+    value === "/dashboard" ||
+    value === "/admin" ||
+    value === "/register" ||
+    value === "/forgot-password" ||
+    value === "/reset-password" ||
+    value === "/verify-email"
+  ) {
+    return value;
+  }
+  return "/dashboard";
+}
+
 function LinkButton({
   to,
   children,
@@ -38,7 +54,7 @@ function LinkButton({
   to: Route;
   children: ReactNode;
   variant?: "default" | "primary" | "ghost" | "text" | "quietText";
-  onNavigate: (to: Route) => void;
+  onNavigate: Navigate;
 }) {
   const className =
     variant === "primary"
@@ -139,7 +155,7 @@ function ThemeToggle() {
   );
 }
 
-function Home({ navigate }: { navigate: (to: Route) => void }) {
+function Home({ navigate }: { navigate: Navigate }) {
   const stackRows = [
     ["API", "FastAPI"],
     ["Data", "SQLAlchemy"],
@@ -281,7 +297,7 @@ function Home({ navigate }: { navigate: (to: Route) => void }) {
   );
 }
 
-function Login({ navigate }: { navigate: (to: Route) => void }) {
+function Login({ navigate }: { navigate: Navigate }) {
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -298,7 +314,8 @@ function Login({ navigate }: { navigate: (to: Route) => void }) {
       setError(result.error.message);
       return;
     }
-    navigate("/dashboard");
+    const params = new URLSearchParams(window.location.search);
+    navigate(safeReturnTo(params.get("returnTo")));
   }
 
   return (
@@ -346,7 +363,7 @@ function Login({ navigate }: { navigate: (to: Route) => void }) {
   );
 }
 
-function Register({ navigate }: { navigate: (to: Route) => void }) {
+function Register({ navigate }: { navigate: Navigate }) {
   const { signUp } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -421,7 +438,7 @@ function Register({ navigate }: { navigate: (to: Route) => void }) {
   );
 }
 
-function ForgotPassword({ navigate }: { navigate: (to: Route) => void }) {
+function ForgotPassword({ navigate }: { navigate: Navigate }) {
   const { forgotPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -475,7 +492,7 @@ function ForgotPassword({ navigate }: { navigate: (to: Route) => void }) {
   );
 }
 
-function ResetPassword({ navigate }: { navigate: (to: Route) => void }) {
+function ResetPassword({ navigate }: { navigate: Navigate }) {
   const { resetPassword } = useAuth();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -541,7 +558,7 @@ function ResetPassword({ navigate }: { navigate: (to: Route) => void }) {
   );
 }
 
-function VerifyEmail({ navigate }: { navigate: (to: Route) => void }) {
+function VerifyEmail({ navigate }: { navigate: Navigate }) {
   const { verifyEmail } = useAuth();
   const [message, setMessage] = useState("Verifying your email...");
   const [isError, setIsError] = useState(false);
@@ -571,7 +588,7 @@ function VerifyEmail({ navigate }: { navigate: (to: Route) => void }) {
 
   return (
     <main className="cardWrap">
-      <section className="card">
+      <section className="card verifyCard">
         <h1>Email verification</h1>
         <p className={isError ? "error" : "success"}>{message}</p>
         <div className="actions">
@@ -584,17 +601,23 @@ function VerifyEmail({ navigate }: { navigate: (to: Route) => void }) {
   );
 }
 
-function Dashboard({ navigate }: { navigate: (to: Route) => void }) {
+function Dashboard({ navigate }: { navigate: Navigate }) {
   const { user, isLoading, signOut, resendVerification } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate("/login");
+      navigate("/login", "?returnTo=/dashboard");
     }
   }, [isLoading, navigate, user]);
 
   if (isLoading || !user) {
-    return <main className="cardWrap">Loading...</main>;
+    return (
+      <main className="cardWrap">
+        <section className="card sessionCard">
+          <p className="eyebrow">Loading session</p>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -662,17 +685,23 @@ function Dashboard({ navigate }: { navigate: (to: Route) => void }) {
   );
 }
 
-function Admin({ navigate }: { navigate: (to: Route) => void }) {
+function Admin({ navigate }: { navigate: Navigate }) {
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate("/login");
+      navigate("/login", "?returnTo=/admin");
     }
   }, [isLoading, navigate, user]);
 
   if (isLoading || !user) {
-    return <main className="cardWrap">Loading...</main>;
+    return (
+      <main className="cardWrap">
+        <section className="card sessionCard">
+          <p className="eyebrow">Loading session</p>
+        </section>
+      </main>
+    );
   }
 
   if (user.role !== "admin") {
@@ -727,8 +756,8 @@ function Admin({ navigate }: { navigate: (to: Route) => void }) {
 export function App() {
   const [route, setRoute] = useState<Route>(() => currentRoute());
 
-  function navigate(to: Route) {
-    window.history.pushState({}, "", to);
+  function navigate(to: Route, search = "") {
+    window.history.pushState({}, "", `${to}${search}`);
     setRoute(to);
   }
 
