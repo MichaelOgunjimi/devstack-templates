@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth";
 
 export default function ResetPasswordPage() {
@@ -43,62 +43,51 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="ds-page">
-      <div className="ds-shell">
-        <nav className="ds-nav">
-          <Link href="/" className="ds-mark">
-            DevStack
-          </Link>
-          <ThemeToggle />
-        </nav>
+    <AuthShell
+      kicker="Credentials"
+      title="Set new password"
+      subtitle="Choose a new password for your account."
+    >
+      <form onSubmit={handleSubmit} className="ds-auth-form">
+        <label className="ds-auth-field">
+          New password
+          <input
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="ds-field"
+          />
+        </label>
 
-        <section className="flex min-h-[calc(100vh-6rem)] items-center justify-center py-12">
-          <div className="ds-card w-full max-w-md p-8">
-            <p className="ds-eyebrow">Credentials</p>
-            <h1 className="mt-3 text-3xl font-bold">Set new password</h1>
-            <p className="mt-2 text-sm text-[var(--ds-muted)]">Choose a new password for your account.</p>
+        <label className="ds-auth-field">
+          Confirm password
+          <input
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            className="ds-field"
+          />
+        </label>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-              <label className="block">
-                <span className="text-sm font-bold">New password</span>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="ds-field"
-                />
-              </label>
+        {message ? <p className="text-sm font-bold ds-success">{message}</p> : null}
+        {error ? <p className="text-sm font-bold ds-error">{error}</p> : null}
 
-              <label className="block">
-                <span className="text-sm font-bold">Confirm password</span>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="ds-field"
-                />
-              </label>
+        <button type="submit" disabled={isPending} className="ds-pill ds-pill-primary w-full">
+          {isPending ? "Saving..." : "Reset password"}
+        </button>
+      </form>
 
-              {message ? <p className="text-sm font-bold ds-success">{message}</p> : null}
-              {error ? <p className="text-sm font-bold ds-error">{error}</p> : null}
-
-              <button type="submit" disabled={isPending} className="ds-pill ds-pill-primary w-full">
-                {isPending ? "Saving..." : "Reset password"}
-              </button>
-            </form>
-
-            <Link href="/login" className="ds-link mt-6 inline-block text-sm">
-              Back to login
-            </Link>
-          </div>
-        </section>
+      <div className="ds-auth-actions">
+        <Link href="/login" className="ds-auth-link">
+          Back to login
+        </Link>
       </div>
-    </main>
+    </AuthShell>
   );
 }

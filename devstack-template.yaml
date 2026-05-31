@@ -44,6 +44,8 @@ stacks:
           to: src/app/layout.tsx
         - from: frontend/app/globals.css
           to: src/app/globals.css
+        - from: frontend/app/auth-shell.tsx
+          to: src/components/auth-shell.tsx
         - from: frontend/app/theme-toggle.tsx
           to: src/components/theme-toggle.tsx
         - from: frontend/app/page.tsx.j2

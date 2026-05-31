@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth";
 
 export default function VerifyEmailPage() {
@@ -39,28 +39,19 @@ export default function VerifyEmailPage() {
   }, [verifyEmail]);
 
   return (
-    <main className="ds-page">
-      <div className="ds-shell">
-        <nav className="ds-nav">
-          <Link href="/" className="ds-mark">
-            DevStack
-          </Link>
-          <ThemeToggle />
-        </nav>
-
-        <section className="flex min-h-[calc(100vh-6rem)] items-center justify-center py-12">
-          <div className="ds-card w-full max-w-md p-8 text-center">
-            <p className="ds-eyebrow">Verification</p>
-            <h1 className="mt-3 text-3xl font-bold">Email verification</h1>
-            <p className={`mt-4 text-sm font-bold ${isError ? "text-[var(--ds-danger)]" : "text-[var(--ds-success)]"}`}>
-              {message}
-            </p>
-            <Link href="/dashboard" className="ds-pill ds-pill-primary mt-8">
-              Open dashboard
-            </Link>
-          </div>
-        </section>
+    <AuthShell
+      kicker="Verification"
+      title="Email verification"
+      subtitle="Local verification links are printed by the backend in development."
+    >
+      <p className={`mt-6 text-sm font-bold ${isError ? "text-[var(--ds-danger)]" : "text-[var(--ds-success)]"}`}>
+        {message}
+      </p>
+      <div className="ds-auth-actions">
+        <Link href="/dashboard" className="ds-pill ds-pill-primary">
+          Open dashboard
+        </Link>
       </div>
-    </main>
+    </AuthShell>
   );
 }
