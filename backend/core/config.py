@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = ""
     SMTP_FROM_NAME: str = ""
     SMTP_USE_TLS: bool = True
+    LOCAL_EMAIL_INBOX_URL: str = ""
 
     @property
     def is_production(self) -> bool:

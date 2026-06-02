@@ -15,6 +15,28 @@ type Route =
 
 type Navigate = (to: Route, search?: string) => void;
 
+const localInboxUrl = {% if "mailhog" in services %}"http://localhost:{{ ports.mailhog_ui }}"{% else %}""{% endif %};
+
+function LocalEmailHint({ action }: { action: string }) {
+  return (
+    <div className="localHint">
+      <p>
+        Local {action} links are always printed in backend logs. Run{" "}
+        <code>devstack logs backend</code> from the project root.
+      </p>
+      {localInboxUrl ? (
+        <p>
+          MailHog is enabled for this project:{" "}
+          <a href={localInboxUrl} target="_blank" rel="noreferrer">
+            open local inbox
+          </a>
+          .
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function currentRoute(): Route {
   const path = window.location.pathname;
   if (
@@ -460,8 +482,10 @@ function ForgotPassword({ navigate }: { navigate: Navigate }) {
     <AuthShell
       kicker="Recovery"
       title="Reset password"
-      subtitle="Check backend logs for the local reset link."
+      subtitle="Enter your email and use the local reset link to choose a new password."
     >
+        <LocalEmailHint action="password reset" />
+
         <form className="form" onSubmit={handleSubmit}>
           <label className="field">
             Email
@@ -522,7 +546,13 @@ function ResetPassword({ navigate }: { navigate: Navigate }) {
   }
 
   return (
-    <AuthShell kicker="Recovery" title="Set new password" subtitle="Choose a new password.">
+    <AuthShell
+      kicker="Recovery"
+      title="Set new password"
+      subtitle="Choose a new password. If the link is missing or expired, request a fresh reset link."
+    >
+        <LocalEmailHint action="password reset" />
+
         <form className="form" onSubmit={handleSubmit}>
           <label className="field">
             New password
@@ -554,6 +584,11 @@ function ResetPassword({ navigate }: { navigate: Navigate }) {
             Reset password
           </button>
         </form>
+        <div className="formActions">
+          <LinkButton to="/forgot-password" variant="quietText" onNavigate={navigate}>
+            Request a new reset link
+          </LinkButton>
+        </div>
     </AuthShell>
   );
 }
@@ -587,22 +622,30 @@ function VerifyEmail({ navigate }: { navigate: Navigate }) {
   }, [verifyEmail]);
 
   return (
-    <main className="cardWrap">
-      <section className="card verifyCard">
-        <h1>Email verification</h1>
+    <AuthShell
+      kicker="Verification"
+      title="Email verification"
+      subtitle="Use the local verification link to mark your account as verified."
+    >
+        <LocalEmailHint action="verification" />
         <p className={isError ? "error" : "success"}>{message}</p>
-        <div className="actions">
-          <LinkButton to="/dashboard" onNavigate={navigate}>
+        <div className="formActions">
+          <LinkButton to="/dashboard" variant="primary" onNavigate={navigate}>
             Open dashboard
           </LinkButton>
+          <LinkButton to="/login" variant="quietText" onNavigate={navigate}>
+            Back to login
+          </LinkButton>
         </div>
-      </section>
-    </main>
+    </AuthShell>
   );
 }
 
 function Dashboard({ navigate }: { navigate: Navigate }) {
   const { user, isLoading, signOut, resendVerification } = useAuth();
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -674,9 +717,28 @@ function Dashboard({ navigate }: { navigate: Navigate }) {
         {!user.isVerified ? (
           <div className="panel warningPanel">
             <h2>Email verification pending</h2>
-            <p className="muted">In local development, the verification link is logged.</p>
-            <button className="button" type="button" onClick={() => resendVerification()}>
-              Send verification email
+            <p className="muted">Verify your account before using verification-gated product flows.</p>
+            <LocalEmailHint action="verification" />
+            {resendMessage ? <p className="success">{resendMessage}</p> : null}
+            {resendError ? <p className="error">{resendError}</p> : null}
+            <button
+              className="button"
+              type="button"
+              disabled={isResending}
+              onClick={async () => {
+                setResendMessage(null);
+                setResendError(null);
+                setIsResending(true);
+                const result = await resendVerification();
+                setIsResending(false);
+                if (result.error) {
+                  setResendError(result.error.message);
+                  return;
+                }
+                setResendMessage(result.message);
+              }}
+            >
+              {isResending ? "Sending..." : "Send verification email"}
             </button>
           </div>
         ) : null}

@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
+import { LocalEmailHint } from "@/components/local-email-hint";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isLoading, signOut, resendVerification } = useAuth();
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -73,14 +77,29 @@ export default function DashboardPage() {
             <div className="ds-panel mt-6 p-5">
               <p className="text-sm font-bold">Email verification pending</p>
               <p className="ds-muted mt-1 text-sm">
-                In local development, the verification link is logged by the backend.
+                Verify your account before using verification-gated product flows.
               </p>
+              <LocalEmailHint action="verification" />
+              {resendMessage ? <p className="mt-4 text-sm font-bold ds-success">{resendMessage}</p> : null}
+              {resendError ? <p className="mt-4 text-sm font-bold ds-error">{resendError}</p> : null}
               <button
                 type="button"
-                onClick={() => resendVerification()}
+                disabled={isResending}
+                onClick={async () => {
+                  setResendMessage(null);
+                  setResendError(null);
+                  setIsResending(true);
+                  const result = await resendVerification();
+                  setIsResending(false);
+                  if (result.error) {
+                    setResendError(result.error.message);
+                    return;
+                  }
+                  setResendMessage(result.message);
+                }}
                 className="ds-pill ds-pill-primary mt-4"
               >
-                Send verification email
+                {isResending ? "Sending..." : "Send verification email"}
               </button>
             </div>
           ) : null}

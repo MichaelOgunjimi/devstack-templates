@@ -1,0 +1,21 @@
+const localInboxUrl = {% if "mailhog" in services %}"http://localhost:{{ ports.mailhog_ui }}"{% else %}""{% endif %};
+
+export function LocalEmailHint({ action }: { action: string }) {
+  return (
+    <div className="ds-local-hint">
+      <p>
+        Local {action} links are always printed in backend logs. Run{" "}
+        <code>devstack logs backend</code> from the project root.
+      </p>
+      {localInboxUrl ? (
+        <p>
+          MailHog is enabled for this project:{" "}
+          <a href={localInboxUrl} target="_blank" rel="noreferrer">
+            open local inbox
+          </a>
+          .
+        </p>
+      ) : null}
+    </div>
+  );
+}

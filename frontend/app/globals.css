@@ -871,6 +871,36 @@ a {
     padding: 1rem;
   }
 
+  .ds-local-hint {
+    display: grid;
+    gap: 0.5rem;
+    border: 1px solid var(--ds-hairline);
+    border-radius: 8px;
+    background: var(--ds-surface-raised);
+    padding: 0.875rem;
+    color: var(--ds-muted);
+    font-size: 0.8125rem;
+    line-height: 1.55;
+  }
+
+  .ds-local-hint p {
+    margin: 0;
+  }
+
+  .ds-local-hint code {
+    border-radius: 4px;
+    background: var(--ds-surface);
+    color: var(--ds-ink);
+    padding: 0.125rem 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  .ds-local-hint a {
+    color: var(--ds-cool);
+    font-weight: 800;
+    text-decoration: none;
+  }
+
   .ds-success {
     color: var(--ds-success);
   }
