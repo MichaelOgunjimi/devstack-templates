@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AuthShell } from "@/components/auth-shell";
+import { LocalEmailHint } from "@/components/local-email-hint";
 import { useAuth } from "@/lib/auth";
 
 export default function ResetPasswordPage() {
@@ -46,8 +47,10 @@ export default function ResetPasswordPage() {
     <AuthShell
       kicker="Credentials"
       title="Set new password"
-      subtitle="Choose a new password for your account."
+      subtitle="Choose a new password. If the link is missing or expired, request a fresh reset link."
     >
+      <LocalEmailHint action="password reset" />
+
       <form onSubmit={handleSubmit} className="ds-auth-form">
         <label className="ds-auth-field">
           New password
@@ -86,6 +89,9 @@ export default function ResetPasswordPage() {
       <div className="ds-auth-actions">
         <Link href="/login" className="ds-auth-link">
           Back to login
+        </Link>
+        <Link href="/forgot-password" className="ds-auth-link ds-auth-link-muted">
+          Request a new reset link
         </Link>
       </div>
     </AuthShell>

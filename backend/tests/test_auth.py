@@ -1,10 +1,15 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_current_admin_user
+from core.config import settings
 from core.security import create_password_reset_token, create_verification_token, hash_password
 from models.user import User
+from services import auth as auth_svc
+from services.integrations.email.client import EmailNotConfiguredError
 
 _PASSWORD = "TestPass123!"
 
@@ -134,6 +139,43 @@ async def test_verify_email_marks_user_verified(
     assert response.json() == {"message": "Email verified successfully"}
     await db_session.refresh(user)
     assert user.is_verified is True
+
+
+@pytest.mark.asyncio
+async def test_verify_email_delivery_uses_smtp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sent = AsyncMock()
+    monkeypatch.setattr(auth_svc, "send_email", sent)
+
+    await auth_svc.send_verify_email(
+        email="verify-delivery@test.com",
+        name="Verify Delivery",
+        user_id="0af7a5f0-98f6-4e83-a333-cf0d740dfabc",
+    )
+
+    sent.assert_awaited_once()
+    kwargs = sent.await_args.kwargs
+    assert kwargs["to"] == "verify-delivery@test.com"
+    assert kwargs["subject"] == "Verify your email"
+    assert "/verify-email?token=" in kwargs["html_body"]
+
+
+@pytest.mark.asyncio
+async def test_auth_email_falls_back_to_logs_when_smtp_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def missing_smtp(**_: object) -> None:
+        raise EmailNotConfiguredError("Missing SMTP settings")
+
+    monkeypatch.setattr(auth_svc, "send_email", missing_smtp)
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+
+    await auth_svc.send_reset_email(
+        email="reset-delivery@test.com",
+        name="Reset Delivery",
+        user_id="0af7a5f0-98f6-4e83-a333-cf0d740dfabc",
+    )
 
 
 @pytest.mark.asyncio

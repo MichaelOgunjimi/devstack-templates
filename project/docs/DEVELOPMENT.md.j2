@@ -23,8 +23,42 @@ uv run pytest
 ## Auth Development
 
 The backend ships with starter auth routes under `/api/v1/auth`. Password reset
-and email verification links are logged by the backend in local development, so
-you can test those flows before configuring SMTP.
+and email verification links are logged by the backend in local development.
+
+```bash
+devstack logs backend
+```
+
+Look for `auth.email.local_link` in the backend logs. That event includes the
+verification or reset `link`.
+{% if "mailhog" in services %}
+
+This project also has MailHog enabled:
+
+- UI: http://localhost:{{ ports.mailhog_ui }}
+- SMTP inside Docker: `mailhog:1025`
+
+The generated backend env is already wired to send local auth emails to MailHog.
+{% else %}
+
+MailHog is not enabled. If you want a browser inbox for local auth emails, run:
+
+```bash
+devstack add mailhog
+```
+{% endif %}
+
+### Roles
+
+Registered users default to `role = "user"`. The starter `/admin` route requires
+`role = "admin"`.
+
+Promote your first local admin from the project root:
+
+```bash
+devstack db shell
+UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+```
 
 {% if frontend == "nextjs" -%}
 The frontend starter pages live in `frontend/src/app/` and use the generated

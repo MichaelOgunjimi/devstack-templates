@@ -66,9 +66,46 @@ Backend environment variables are in `backend/.env`. Keep secrets out of git.
 ## Starter Auth
 
 The FastAPI backend includes email/password auth, refresh tokens, email
-verification, password reset, and `user`/`admin` roles. In local development,
-verification and reset links are logged by the backend so the app works before
-you configure SMTP.
+verification, password reset, and `user`/`admin` roles.
+
+### First-run local email
+
+Verification and password reset links are always printed in backend logs during
+local development:
+
+```bash
+devstack logs backend
+```
+
+Look for `auth.email.local_link` and open the printed `link`.
+{% if "mailhog" in services %}
+
+MailHog is enabled for this project, so the same auth emails are also delivered
+to the local inbox:
+
+- MailHog UI: http://localhost:{{ ports.mailhog_ui }}
+{% else %}
+
+MailHog is not enabled for this project. Add it later with:
+
+```bash
+devstack add mailhog
+```
+{% endif %}
+
+### User and admin roles
+
+New accounts default to the `user` role. Admin-only frontend routes and backend
+dependencies require `role = "admin"`.
+
+For a first local admin, register normally and promote that user in Postgres:
+
+```bash
+devstack db shell
+UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+```
+
+Then sign out and sign back in.
 
 {% if frontend == "nextjs" -%}
 The Next.js starter includes:

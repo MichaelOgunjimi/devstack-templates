@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { AuthShell } from "@/components/auth-shell";
+import { LocalEmailHint } from "@/components/local-email-hint";
 import { useAuth } from "@/lib/auth";
 
 export default function ForgotPasswordPage() {
@@ -32,8 +33,10 @@ export default function ForgotPasswordPage() {
     <AuthShell
       kicker="Recovery"
       title="Reset password"
-      subtitle="Enter your email and check the backend logs for the local reset link."
+      subtitle="Enter your email and use the local reset link to choose a new password."
     >
+      <LocalEmailHint action="password reset" />
+
       <form onSubmit={handleSubmit} className="ds-auth-form">
         <label className="ds-auth-field">
           Email

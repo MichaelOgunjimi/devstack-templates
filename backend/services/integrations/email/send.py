@@ -1,6 +1,6 @@
 import structlog
 
-from .client import SMTPClient, _build_message
+from .client import EmailNotConfiguredError, SMTPClient, _build_message
 from .schemas import EmailAttachment, EmailMessage, EmailRecipient
 from .templates import render_template
 
@@ -39,6 +39,9 @@ async def send_email(
                 text_body=text_body,
             )
             await client.send_message(message)
+    except EmailNotConfiguredError:
+        logger.info("email.send.not_configured", recipient_count=len(recipients), subject=subject)
+        raise
     except Exception:
         logger.exception("email.send.failed", recipient_count=len(recipients), subject=subject)
         raise

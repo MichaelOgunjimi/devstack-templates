@@ -46,6 +46,8 @@ stacks:
           to: src/app/globals.css
         - from: frontend/app/auth-shell.tsx
           to: src/components/auth-shell.tsx
+        - from: frontend/app/local-email-hint.tsx.j2
+          to: src/components/local-email-hint.tsx
         - from: frontend/app/theme-toggle.tsx
           to: src/components/theme-toggle.tsx
         - from: frontend/app/page.tsx.j2
@@ -150,7 +152,13 @@ services:
     name: "MailHog"
     category: email
     compose_profile: dev
-    env: {}
+    env:
+      SMTP_HOST: "mailhog"
+      SMTP_PORT: "1025"
+      SMTP_FROM_EMAIL: "no-reply@{{ project_name }}.local"
+      SMTP_FROM_NAME: "{{ project_name }}"
+      SMTP_USE_TLS: "false"
+      LOCAL_EMAIL_INBOX_URL: "http://localhost:{{ ports.mailhog_ui }}"
     backend_dependencies: []
     copy_files: []
 

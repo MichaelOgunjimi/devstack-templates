@@ -26,12 +26,19 @@ from schemas.auth import (
     TokenResponse,
 )
 from schemas.user import UserUpdate
+from services.integrations.email import send_email
+from services.integrations.email.client import EmailNotConfiguredError
+from services.integrations.email.templates import render_inline
 from utils.datetime import utc_now
 
 logger = structlog.get_logger(__name__)
 
 # Redis key prefix for refresh tokens: refresh:{jti} -> user_id
 _REDIS_PREFIX = "refresh"
+
+_VERIFY_EMAIL_SUBJECT = "Verify your email"
+_RESET_EMAIL_SUBJECT = "Reset your password"
+_PASSWORD_CHANGED_SUBJECT = "Your password was changed"
 
 
 def _redis_key(jti: str) -> str:
@@ -280,17 +287,96 @@ async def change_user_password(user: User, body: ChangePasswordRequest, db: Asyn
 async def send_verify_email(*, email: str, name: str, user_id: str) -> None:
     token = create_verification_token(user_id)
     link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-    logger.info("auth.email.verify", email=email, name=name, link=link)
+    html = render_inline(
+        _VERIFY_EMAIL_SUBJECT,
+        [
+            f"Hi {name or 'there'},",
+            "Use this link to verify your email address for your local app account.",
+            "If you did not create this account, you can ignore this message.",
+        ],
+        button_text="Verify email",
+        button_url=link,
+    )
+    await _send_auth_email(
+        email=email,
+        subject=_VERIFY_EMAIL_SUBJECT,
+        html_body=html,
+        link=link,
+        kind="verify",
+    )
 
 
 async def send_reset_email(*, email: str, name: str, user_id: str) -> None:
     token = create_password_reset_token(user_id)
     link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-    logger.info("auth.email.password_reset", email=email, name=name, link=link)
+    html = render_inline(
+        _RESET_EMAIL_SUBJECT,
+        [
+            f"Hi {name or 'there'},",
+            "Use this link to set a new password. The link expires soon for your security.",
+            "If you did not request this, you can ignore this message.",
+        ],
+        button_text="Reset password",
+        button_url=link,
+    )
+    await _send_auth_email(
+        email=email,
+        subject=_RESET_EMAIL_SUBJECT,
+        html_body=html,
+        link=link,
+        kind="password_reset",
+    )
 
 
 async def send_password_changed_email(*, email: str, name: str, user_id: str) -> None:
-    logger.info("auth.email.password_changed", email=email, name=name, user_id=user_id)
+    html = render_inline(
+        _PASSWORD_CHANGED_SUBJECT,
+        [
+            f"Hi {name or 'there'},",
+            "The password for your account was changed.",
+            "If you did not make this change, reset your password immediately.",
+        ],
+    )
+    await _send_auth_email(
+        email=email,
+        subject=_PASSWORD_CHANGED_SUBJECT,
+        html_body=html,
+        link=None,
+        kind="password_changed",
+    )
+
+
+async def _send_auth_email(
+    *,
+    email: str,
+    subject: str,
+    html_body: str,
+    link: str | None,
+    kind: str,
+) -> None:
+    if link and not settings.is_production:
+        logger.info(
+            "auth.email.local_link",
+            kind=kind,
+            email=email,
+            link=link,
+            inbox_url=settings.LOCAL_EMAIL_INBOX_URL or None,
+        )
+
+    try:
+        await send_email(to=email, subject=subject, html_body=html_body)
+    except EmailNotConfiguredError:
+        if settings.is_production:
+            raise
+        logger.info("auth.email.smtp_not_configured", kind=kind, email=email)
+        return
+
+    logger.info(
+        "auth.email.sent",
+        kind=kind,
+        email=email,
+        inbox_url=settings.LOCAL_EMAIL_INBOX_URL or None,
+    )
 
 
 async def get_or_create_oauth_user(

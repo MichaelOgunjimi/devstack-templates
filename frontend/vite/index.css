@@ -1018,3 +1018,33 @@ a {
 .link:hover {
   color: var(--cool-strong);
 }
+
+.localHint {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  padding: 0.875rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.localHint p {
+  margin: 0;
+}
+
+.localHint code {
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.125rem 0.25rem;
+  font-size: 0.75rem;
+}
+
+.localHint a {
+  color: var(--cool);
+  font-weight: 800;
+  text-decoration: none;
+}
