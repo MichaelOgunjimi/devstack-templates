@@ -133,6 +133,7 @@ def _render_context(
         "project_name": GENERATED_PROJECT,
         "stack": _required_str(stack, "id"),
         "frontend": _required_str(stack, "frontend"),
+        "package_manager": "pnpm",
         "services": services,
         "optional": optional,
         "ports": PORTS,
@@ -163,6 +164,8 @@ def _render_compose(
         raise SystemExit(f"{compose_source} did not render a backend service")
     if context["frontend"] and "frontend:" not in rendered:
         raise SystemExit(f"{compose_source} did not render a frontend service")
+    if context["frontend"] == "nextjs" and "pnpm dev --port" not in rendered:
+        raise SystemExit(f"{compose_source} did not render the pnpm frontend command")
 
 
 def _copy_frontend_shared(

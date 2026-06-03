@@ -1,4 +1,5 @@
 # {{ project_name }}
+{% set frontend_package_manager = package_manager | default("pnpm") %}
 
 Generated with DevStack using the `{{ stack }}` stack.
 
@@ -12,6 +13,10 @@ devstack logs
 
 The project metadata lives in `.devstack.json`, so global `devstack` commands can
 detect this project when you run them from the project directory.
+{% if frontend %}
+
+Frontend dependencies use `{{ frontend_package_manager }}`.
+{% endif %}
 
 ## Services
 
@@ -60,6 +65,16 @@ make test        # run backend tests
 make lint        # run backend lint checks
 make migrate     # run database migrations
 ```
+
+{% if frontend -%}
+For direct frontend work outside Docker:
+
+```bash
+cd frontend
+{{ frontend_package_manager }} install
+{{ frontend_package_manager }} dev
+```
+{% endif %}
 
 Backend environment variables are in `backend/.env`. Keep secrets out of git.
 

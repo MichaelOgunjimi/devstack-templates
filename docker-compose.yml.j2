@@ -1,4 +1,5 @@
 name: {{ project_name }}
+{% set frontend_package_manager = package_manager | default("pnpm") %}
 
 services:
 
@@ -30,7 +31,11 @@ services:
     build:
       context: ./frontend
       target: deps
+{% if frontend_package_manager == "pnpm" %}
+    command: pnpm dev --port {{ ports.frontend }}
+{% else %}
     command: npm run dev -- --port {{ ports.frontend }}
+{% endif %}
     ports:
       - "{{ ports.frontend }}:{{ ports.frontend }}"
     environment:
