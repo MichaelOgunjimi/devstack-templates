@@ -1,4 +1,5 @@
 # Development
+{% set frontend_package_manager = package_manager | default("pnpm") %}
 
 ## Project Shape
 
@@ -66,6 +67,16 @@ auth client in `frontend/src/lib/auth/`.
 {% elif frontend == "react" -%}
 The Vite starter app lives in `frontend/src/App.tsx` and uses the generated auth
 client in `frontend/src/lib/auth/`.
+{% endif %}
+{% if frontend %}
+
+Frontend package management uses `{{ frontend_package_manager }}`:
+
+```bash
+cd frontend
+{{ frontend_package_manager }} install
+{{ frontend_package_manager }} dev
+```
 {% endif %}
 
 ## Docker Workflow
