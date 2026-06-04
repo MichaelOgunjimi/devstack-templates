@@ -351,6 +351,18 @@ def _assert_frontend_required_content(stack_id: str, project_path: Path) -> None
             if expected not in content:
                 raise SystemExit(f"{path} is missing expected starter content: {expected}")
 
+    auth_provider = project_path / "frontend" / "src" / "lib" / "auth" / "provider.tsx"
+    _assert_exists(auth_provider, f"{stack_id} auth provider")
+    provider_content = auth_provider.read_text()
+    if "finishLoadingWithoutSession" not in provider_content:
+        raise SystemExit(f"{auth_provider} must recover from failed session initialization")
+
+    auth_client = project_path / "frontend" / "src" / "lib" / "auth" / "client.ts"
+    _assert_exists(auth_client, f"{stack_id} auth client")
+    client_content = auth_client.read_text()
+    if client_content.count('this.emit("TOKEN_REFRESHED", newToken);') != 1:
+        raise SystemExit(f"{auth_client} must emit TOKEN_REFRESHED once per refresh")
+
 
 def _file_record(value: Any, field: str) -> dict[str, str]:
     if not isinstance(value, dict):
