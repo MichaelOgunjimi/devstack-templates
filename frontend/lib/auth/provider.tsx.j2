@@ -89,11 +89,21 @@ export function AuthProvider({ children, options }: AuthProviderProps) {
   useEffect(() => {
     let mounted = true;
 
+    const finishLoadingWithoutSession = () => {
+      if (!mounted) return;
+      setState({ token: null, user: null, isLoading: false });
+    };
+
     const fetchUser = async (token: Token | null) => {
-      if (!token || !mounted) return;
-      const result = await client.getUser();
-      if (mounted && result.user) {
+      if (!token || !mounted) return false;
+
+      try {
+        const result = await client.getUser();
+        if (!mounted || !result.user) return false;
         setState((s) => ({ ...s, user: result.user }));
+        return true;
+      } catch {
+        return false;
       }
     };
 
@@ -109,8 +119,13 @@ export function AuthProvider({ children, options }: AuthProviderProps) {
               isLoading: token !== null,
             });
             if (token) {
-              fetchUser(token).then(() => {
-                if (mounted) setState((s) => ({ ...s, isLoading: false }));
+              fetchUser(token).then((hasUser) => {
+                if (!mounted) return;
+                if (hasUser) {
+                  setState((s) => ({ ...s, isLoading: false }));
+                } else {
+                  finishLoadingWithoutSession();
+                }
               });
             } else {
               setState((s) => ({ ...s, isLoading: false }));
@@ -119,8 +134,13 @@ export function AuthProvider({ children, options }: AuthProviderProps) {
 
           case "SIGNED_IN":
             setState({ token: token, user: null, isLoading: true });
-            fetchUser(token).then(() => {
-              if (mounted) setState((s) => ({ ...s, isLoading: false }));
+            fetchUser(token).then((hasUser) => {
+              if (!mounted) return;
+              if (hasUser) {
+                setState((s) => ({ ...s, isLoading: false }));
+              } else {
+                finishLoadingWithoutSession();
+              }
             });
             break;
 
@@ -144,18 +164,24 @@ export function AuthProvider({ children, options }: AuthProviderProps) {
 
       const token = client.getToken();
       if (!token) {
-        setState({ token: null, user: null, isLoading: false });
+        finishLoadingWithoutSession();
         return;
       }
 
-      const result = await client.getUser();
+      const result = await client.getUser().catch(() => null);
       if (!mounted) return;
+
+      if (!result?.user) {
+        finishLoadingWithoutSession();
+        return;
+      }
+
       setState({
         token,
         user: result.user,
         isLoading: false,
       });
-    });
+    }).catch(finishLoadingWithoutSession);
 
     return () => {
       mounted = false;
